@@ -2,8 +2,6 @@ import { z } from "zod@4.3.6";
 
 const cubepanionBaseUrl = "https://cubepanion.ameliah.art/api/v2";
 
-const db = new Bun.SQL();
-
 let games: (typeof Game)[];
 
 async function main() {
