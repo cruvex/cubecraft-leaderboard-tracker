@@ -14,15 +14,18 @@ async function main() {
     return;
   }
 
-  console.log(`Fetching leaderboard for ${game.name} (${game.id})`);
+  console.log(`Fetching leaderboard for ${game.displayName} (${game.id})`);
 
   const leaderboard = await fetchGameLeaderboard(game?.name);
   console.log(`Current leaderboard last updated: `, leaderboard.lastUpdated);
 
-  const lastSnapshot = await getLastGameSnapshotTimestamp(game?.id);
-  console.log(`Last saved snapshot: `, lastSnapshot);
+  const lastSavedSnapshot = await getLastGameSnapshotTimestamp(game?.id);
+  console.log(`Last saved snapshot: `, lastSavedSnapshot);
 
-  if (!lastSnapshot || leaderboard.lastUpdated > lastSnapshot) {
+  if (
+    !lastSavedSnapshot ||
+    new Date(leaderboard.lastUpdated) > lastSavedSnapshot
+  ) {
     await saveGameLeaderboardSnapshot(leaderboard);
     console.log("Leaderboard snapshot saved");
   } else {
@@ -122,7 +125,7 @@ const LeaderboardPosition = z.object({
 
 const LeaderboardResponse = z.object({
   gameId: z.number(),
-  lastUpdated: z.iso.datetime(),
+  lastUpdated: z.date(),
   rows: z.array(LeaderboardPosition),
 });
 
