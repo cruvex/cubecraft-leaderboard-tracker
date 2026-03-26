@@ -1,5 +1,5 @@
 <!doctype html>
-<html>
+<html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
@@ -7,217 +7,323 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
       :root {
-        --max-width: 960px;
-        --gap: 12px;
-        --muted: #666;
+        --primary: #2563eb;
+        --primary-hover: #1d4ed8;
+        --bg: #f8fafc;
+        --card-bg: #ffffff;
+        --text: #1e293b;
+        --text-muted: #64748b;
+        --border: #e2e8f0;
+        --radius: 12px;
+        --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
       }
-      html, body {
-        height: 100%;
+
+      * { box-sizing: border-box; }
+
+      body {
         margin: 0;
-        font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI",
-          Roboto, "Helvetica Neue", Arial;
-        background: #fafafa;
-        color: #111;
+        font-family: 'Inter', system-ui, -apple-system, sans-serif;
+        background-color: var(--bg);
+        color: var(--text);
+        line-height: 1.5;
       }
+
+      .navbar {
+        background: var(--card-bg);
+        border-bottom: 1px solid var(--border);
+        padding: 1rem 2rem;
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+
+      .navbar h1 {
+        margin: 0;
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: var(--primary);
+      }
+
       .container {
-        max-width: var(--max-width);
-        margin: 28px auto;
-        padding: 20px;
-        background: #fff;
-        box-shadow: 0 6px 18px rgba(16,24,40,0.06);
-        border-radius: 10px;
+        max-width: 1100px;
+        margin: 2rem auto;
+        padding: 0 1rem;
+        display: grid;
+        grid-template-columns: 350px 1fr;
+        gap: 2rem;
       }
-      h1 { margin: 0 0 8px 0; font-size: 20px; }
-      h2 { margin: 20px 0 8px 0; font-size: 16px; }
-      .row { display:flex; gap:var(--gap); align-items:center; margin-bottom:12px; }
-      input[type="text"] { flex:1; padding:8px 10px; font-size:14px; border:1px solid #e6e6e6; border-radius:6px; }
+
+      @media (max-width: 900px) {
+        .container { 
+          grid-template-columns: 1fr; 
+          margin-top: 1rem;
+          gap: 1.5rem;
+        }
+        aside { order: 2; }
+        main { order: 1; }
+        .navbar { padding: 1rem; }
+      }
+
+      @media (max-width: 600px) {
+        .player-header {
+          flex-direction: column;
+          align-items: flex-start;
+          gap: 0.25rem;
+        }
+        .stats-grid {
+          grid-template-columns: 1fr;
+        }
+        .card { padding: 1rem; }
+      }
+
+      aside {
+        display: flex;
+        flex-direction: column;
+      }
+
+      .card {
+        background: var(--card-bg);
+        border-radius: var(--radius);
+        border: 1px solid var(--border);
+        box-shadow: var(--shadow);
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+      }
+
+      .card-title {
+        font-size: 1.1rem;
+        font-weight: 600;
+        margin-bottom: 1rem;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+
+      .input-group {
+        display: flex;
+        gap: 0.5rem;
+        margin-bottom: 1rem;
+      }
+
+      input[type="text"] {
+        flex: 1;
+        padding: 0.625rem 0.875rem;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        font-size: 0.875rem;
+        outline: none;
+        transition: border-color 0.2s;
+      }
+
+      input[type="text"]:focus {
+        border-color: var(--primary);
+      }
+
       button {
-        padding:8px 12px;
-        font-size:14px;
+        padding: 0.625rem 1rem;
+        font-size: 0.875rem;
+        font-weight: 500;
         border: none;
-        background: #2563eb;
-        color: #fff;
-        border-radius:6px;
+        border-radius: 8px;
         cursor: pointer;
+        transition: all 0.2s;
+        background: var(--primary);
+        color: white;
       }
-      button.secondary {
-        background: #6b7280;
+
+      button:hover { background: var(--primary-hover); }
+      button.secondary { background: var(--bg); color: var(--text); border: 1px solid var(--border); }
+      button.secondary:hover { background: var(--border); }
+      button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.875rem;
       }
-      button:disabled { opacity: 0.6; cursor: not-allowed; }
-      .muted { color: var(--muted); font-size: 13px; }
-      table { width:100%; border-collapse: collapse; margin-top:12px; border-radius:6px; overflow:hidden; }
-      th, td { text-align:left; padding:10px 12px; border-bottom:1px solid #f1f1f1; font-size:14px; }
-      th { background:#fafafa; font-weight:600; font-size:13px; color:#374151; }
-      #chartContainer { height: 340px; margin-top:12px; }
-      .flex-split { display:flex; gap:12px; align-items:center; }
-      .small { font-size:13px; color:#374151; }
-      .note { margin-top:8px; font-size:13px; color:#475569; }
-      @media (max-width:640px) {
-        .row { flex-direction: column; align-items: stretch; }
-        button { width: 100%; }
+
+      th {
+        text-align: left;
+        padding: 0.75rem;
+        border-bottom: 2px solid var(--border);
+        color: var(--text-muted);
+        font-weight: 600;
+        text-transform: uppercase;
+        font-size: 0.75rem;
+      }
+
+      td {
+        padding: 0.75rem;
+        border-bottom: 1px solid var(--border);
+      }
+
+      tr.clickable { cursor: pointer; }
+      tr.clickable:hover { background: var(--bg); }
+
+      .badge {
+        padding: 0.25rem 0.5rem;
+        border-radius: 6px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        background: #dcfce7;
+        color: #166534;
+      }
+
+      #chartContainer {
+        min-height: 400px;
+        position: relative;
+      }
+
+      .top-gainers-wrapper {
+        max-height: 575px;
+        overflow-y: auto;
+        margin: 0 -1.5rem;
+        padding: 0 1.5rem;
+      }
+
+      @media (max-width: 900px) {
+        .top-gainers-wrapper {
+          max-height: 400px;
+        }
+        #topGainersCard {
+          position: static !important;
+        }
+      }
+
+      /* Hide horizontal scroll if any */
+      .top-gainers-wrapper {
+        overflow-x: hidden;
+      }
+
+      .error-state {
+        display: none;
+        padding: 3rem 1.5rem;
+        text-align: center;
+        background: #fef2f2;
+        border-radius: var(--radius);
+        border: 1px solid #fecaca;
+        color: #991b1b;
+        margin-top: 1rem;
+      }
+
+      .error-state h3 { margin-top: 0; }
+      .error-state button { margin-top: 1rem; }
+
+      .player-header {
+        display: flex;
+        align-items: baseline;
+        gap: 0.75rem;
+        margin-bottom: 1.5rem;
+      }
+
+      .player-name { font-size: 1.5rem; font-weight: 700; }
+      .player-uuid { font-family: monospace; color: var(--text-muted); font-size: 0.875rem; }
+
+      .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+      }
+
+      .stat-card {
+        padding: 1rem;
+        background: var(--bg);
+        border-radius: 8px;
+      }
+
+      .stat-label { font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600; }
+      .stat-value { font-size: 1.25rem; font-weight: 700; }
+
+      .loading-overlay {
+        position: absolute;
+        inset: 0;
+        background: rgba(255,255,255,0.7);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 5;
+        display: none;
+      }
+
+      code {
+        background: var(--bg);
+        padding: 0.2rem 0.4rem;
+        border-radius: 4px;
+        font-size: 0.8rem;
       }
     </style>
   </head>
   <body>
+    <nav class="navbar">
+      <h1>Leaderboard Tracker</h1>
+      <div style="display: flex; align-items: center; gap: 1rem;">
+        <select id="gameSelector" style="padding: 0.4rem; border-radius: 6px; border: 1px solid var(--border); font-size: 0.875rem;">
+          <option value="">All Games</option>
+        </select>
+        <div id="lastUpdated" class="stat-label">Last 30 Days</div>
+      </div>
+    </nav>
+
     <div class="container">
-      <h1>Leaderboard Dashboard</h1>
-      <div class="note">Visualize score gains and player time series over the last 30 days. Uses the server's /api endpoints.</div>
-
-      <section>
-        <h2>Top 20 Gainers (last 30 days)</h2>
-        <div id="topGainers" class="muted">Loading...</div>
-      </section>
-
-      <section style="margin-top:24px">
-        <h2>Player Details</h2>
-        <div class="row">
-          <input id="playerUuid" type="text" value="d8aa305e-264d-49b8-84ca-aaec79594666" placeholder="Player UUID (or cached player id)" />
-          <div class="flex-split" style="margin-left:auto">
-            <button id="loadPlayerGain">Load Score Gain</button>
-            <button id="loadPlayerScores" class="secondary">Load Time Series</button>
+      <aside>
+        <div class="card" id="topGainersCard" style="position: sticky; top: 5rem;">
+          <div class="card-title">Top Gainers</div>
+          <div id="topGainersContainer" class="top-gainers-wrapper">
+            <div id="topGainers" class="text-muted">Loading...</div>
           </div>
         </div>
+      </aside>
 
-        <div id="playerGain" class="small">Score gain: —</div>
+      <main>
+        <div class="card">
+          <div class="card-title">Player Search</div>
+          <div class="input-group">
+            <input id="playerSearch" type="text" placeholder="Enter Player IGN or UUID..." />
+            <button id="loadPlayerBtn">View Stats</button>
+          </div>
+          
+          <div id="playerProfile" style="display: none;">
+            <div class="player-header">
+              <span id="displayIgn" class="player-name">---</span>
+              <span id="displayUuid" class="player-uuid">---</span>
+            </div>
 
-        <div id="chartContainer">
-          <canvas id="scoreChart" width="800" height="340"></canvas>
+            <div class="stats-grid">
+              <div class="stat-card">
+                <div id="gainLabel" class="stat-label">30d Score Gain</div>
+                <div id="displayGain" class="stat-value">0</div>
+              </div>
+              <div class="stat-card">
+                <div id="scoreLabel" class="stat-label">Current Score</div>
+                <div id="displayCurrentScore" class="stat-value">---</div>
+              </div>
+            </div>
+
+            <div id="chartWrapper" style="position: relative;">
+              <div id="chartLoading" class="loading-overlay">Loading chart...</div>
+              <div id="chartContainer">
+                <canvas id="scoreChart"></canvas>
+              </div>
+            </div>
+          </div>
+
+          <div id="errorState" class="error-state">
+            <h3 id="errorTitle">Player Not Found</h3>
+            <p id="errorMessage">We couldn't find any data for the requested player.</p>
+            <button class="secondary" onclick="resetSearch()">Back to Search</button>
+          </div>
+          
+          <div id="emptyState" class="text-muted" style="text-align: center; padding: 3rem 0;">
+            Select a player from the list or enter a UUID to see details.
+          </div>
         </div>
-      </section>
-
-      <section style="margin-top:24px">
-        <h2>Notes</h2> & Tips</h2>
-        <ul></ul>
-          <li class="muted">The dashboard reads data from the same database your collector writes to (via Bun.sql).</li>
-          <li class="muted">Player UUIDs are used as identifiers. You can paste the UUID from the collector logs or DB.</li>
-          <li class="muted">If you want filtering by specific game, I can add a dropdown to switch games.</li>
-        </ul>
-      </section>
+      </main>
     </div>
 
-    <script>
-      (</script>function () {
-        const apiBase = '/api';
-
-        function el(id) { return document.getElementById(id); }
-
-        async function fetchTopGainers() {
-          const res = await fetch(`${apiBase}/top-gainers`);
-          if (!res.ok) throw new Error('Failed to load top gainers');
-          return res.json();
-        }
-
-        async function fetchPlayerGain(uuid) {
-          const res = await fetch(`${apiBase}/player/${encodeURIComponent(uuid)}/score_gain`);
-          if (!res.ok) throw new Error('Failed to load player gain');
-          return res.json();
-        }
-
-        async function fetchPlayerScores(uuid) {
-          const res = await fetch(`${apiBase}/player/${encodeURIComponent(uuid)}/scores`);
-          if (!res.ok) throw new Error('Failed to load player scores');
-          return res.json();
-        }
-
-        function renderTopGainers(container, data) {
-          if (!Array.isArray(data) || data.length === 0) {
-            container.innerText = 'No data';
-            return;
-          }
-
-          const table = document.createElement('table');
-          const thead = document.createElement('thead');
-          thead.innerHTML = '<tr><th>Player (UUID)</</th>th><th>Score gain</th></tr>';</th>
-          table.appendChild(thead);
-          const tbody = document.createElement('tbody');
-          for (const row of data) {
-            const tr = document.createElement('tr');
-            tr.innerHTML = `<td style="font-family:monospace">${row.player}</td><td>${row.score_gain}</td>`;
-            tbody.appendChild(tr);
-          }
-          table.appendChild(tbody);
-          container.innerHTML = '';
-          container.appendChild(table);
-        }
-
-        let chart = null;
-
-        function renderTimeSeries(canvas, rows) {
-          const labels = rows.map(r => new Date(r.timestamp).toLocaleString());
-          const data = rows.map(r => r.score);
-
-          if (chart) {
-            chart.data.labels = labels;
-            chart.data.datasets[0].data = data;
-            chart.update();
-            return;
-          }
-
-          const ctx = canvas.getContext('2d');
-          chart = new Chart(ctx, {
-            type: 'line',
-            data: {
-              labels,
-              datasets: [{
-                label: 'Score',
-                data,
-                borderColor: 'rgb(59,130,246)',
-                backgroundColor: 'rgba(59,130,246,0.08)',
-                tension: 0.15,
-                pointRadius: 3,
-                fill: true,
-              }]
-            },
-            options: {
-              responsive: true,
-              interaction: { mode: 'index', intersect: false },
-              scales: {
-                x: { display: true, title: { display: false } },
-                y: { display: true, beginAtZero: false }
-              }
-            }
-          });
-        }
-
-        // bootstrap
-        (async function init() {
-          const topGainersContainer = el('topGainers');
-          try {
-            const top = await fetchTopGainers();
-            renderTopGainers(topGainersContainer, top);
-          } catch (err) {
-            topGainersContainer.innerText = 'Failed to load: ' + err;
-          }
-
-          el('loadPlayerGain').addEventListener('click', async () => {
-            const uuid = el('playerUuid').value.trim();
-            if (!uuid) return alert('Enter a player UUID first');
-            el('playerGain').innerText = 'Loading...';
-            try {
-              const res = await fetchPlayerGain(uuid);
-              el('playerGain').innerText = `Score gain (30d): ${res.score_gain}`;
-            } catch (err) {
-              el('playerGain').innerText = 'Failed to load: ' + err;
-            }
-          });
-
-          el('loadPlayerScores').addEventListener('click', async () => {
-            const uuid = el('playerUuid').value.trim();
-            if (!uuid) return alert('Enter a player UUID first');
-            const canvas = el('scoreChart');
-            try {
-              const res = await fetchPlayerScores(uuid);
-              if (!res.rows || res.rows.length === 0) {
-                alert('No score history available for this player in the last 30 days.');
-                return;
-              }
-              renderTimeSeries(canvas, res.rows);
-            } catch (err) {
-              alert('Failed to load scores: ' + err);
-            }
-          });
-        })();
-      })();
-    </script>
+    <script src="app.js"></script>
   </body>
 </html>

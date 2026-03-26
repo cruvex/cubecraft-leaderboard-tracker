@@ -1,205 +1,260 @@
-const apiBase = '/api';
+const apiBase = "/api";
+let chart = null;
+let games = [];
+let currentGameId = null;
 
-function el(id) { return document.getElementById(id); }
+const el = (id) => document.getElementById(id);
 
-async function fetchTopGainers() {
-  const res = await fetch(`${apiBase}/top-gainers`);
-  if (!res.ok) throw new Error(`Failed to load top gainers (${res.status})`);
-  return res.json();
-}
-
-async function fetchPlayerGain(uuid) {
-  const res = await fetch(`${apiBase}/player/${encodeURIComponent(uuid)}/score_gain`);
-  if (!res.ok) throw new Error(`Failed to load player gain (${res.status})`);
-  return res.json();
-}
-
-async function fetchPlayerScores(uuid) {
-  const res = await fetch(`${apiBase}/player/${encodeURIComponent(uuid)}/scores`);
-  if (!res.ok) throw new Error(`Failed to load player scores (${res.status})`);
+async function apiFetch(endpoint) {
+  const isInternal = endpoint.startsWith("/");
+  const separator = endpoint.includes("?") ? "&" : "?";
+  const url = (isInternal && currentGameId) ? `${endpoint}${separator}gameId=${currentGameId}` : endpoint;
+  const res = await fetch(isInternal ? `${apiBase}${url}` : url);
+  if (!res.ok) throw new Error(`API Error: ${res.status}`);
   return res.json();
 }
 
 function formatUuid(uuid) {
-  // Keep short form for display if it's a long hex without dashes
-  if (!uuid) return '';
-  if (uuid.length === 32) return uuid.replace(/(.{8})(.{4})(.{4})(.{4})(.{12})/, '$1-$2-$3-$4-$5');
+  if (!uuid) return "";
+  if (uuid.length === 32)
+    return uuid.replace(/(.{8})(.{4})(.{4})(.{4})(.{12})/, "$1-$2-$3-$4-$5");
   return uuid;
 }
 
-function renderTopGainers(container, data) {
-  container.innerHTML = '';
-  if (!Array.isArray(data) || data.length === 0) {
-    container.innerText = 'No data';
+function renderTopGainers(data) {
+  const container = el("topGainers");
+  container.innerHTML = "";
+  
+  if (!data?.length) {
+    container.innerHTML = '<div class="text-muted">No data available</div>';
     return;
   }
 
-  const table = document.createElement('table');
-  const thead = document.createElement('thead');
-  thead.innerHTML = '<tr><th>Player (UUID)</th><th>Score gain</th></tr>';
-  table.appendChild(thead);
-  const tbody = document.createElement('tbody');
-
-  data.forEach((row) => {
-    const tr = document.createElement('tr');
-    tr.style.cursor = 'pointer';
-    tr.title = 'Click to load this player';
-    const displayUuid = formatUuid(row.player);
-    tr.innerHTML = `<td>${displayUuid}</td><td>${row.score_gain}</td>`;
-    tr.addEventListener('click', () => {
-      el('playerUuid').value = row.player;
-      // Optionally load profile gain and time series automatically
-      loadPlayerGain(row.player);
-      loadPlayerScores(row.player);
-    });
+  const table = document.createElement("table");
+  table.innerHTML = `
+    <thead>
+      <tr>
+        <th>Player</th>
+        <th style="text-align: right;">Gain</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  `;
+  
+  const tbody = table.querySelector("tbody");
+  data.forEach(row => {
+    const tr = document.createElement("tr");
+    tr.className = "clickable";
+    tr.innerHTML = `
+      <td>
+        <div style="font-weight: 600;">${row.ign}</div>
+      </td>
+      <td style="text-align: right;">
+        <span class="badge">+${row.score_gain.toLocaleString()}</span>
+      </td>
+    `;
+    tr.onclick = () => loadPlayerProfile(row.player);
     tbody.appendChild(tr);
   });
-
-  table.appendChild(tbody);
+  
   container.appendChild(table);
 }
 
-let chart = null;
+function normalizeData(rows, intervalMs = 6 * 60 * 60 * 1000) {
+  if (!rows || rows.length < 2) return rows;
 
-function renderTimeSeries(canvas, rows) {
-  const labels = rows.map(r => new Date(r.timestamp).toLocaleString());
-  const data = rows.map(r => Number(r.score));
+  const firstDate = new Date(rows[0].timestamp);
+  const lastDate = new Date(rows[rows.length - 1].timestamp);
+  
+  // Align start to the nearest interval boundary below
+  const startTime = Math.floor(firstDate.getTime() / intervalMs) * intervalMs;
+  const endTime = Math.ceil(lastDate.getTime() / intervalMs) * intervalMs;
 
-  if (!window.Chart) {
-    // Chart.js not loaded
-    canvas.parentElement.innerHTML = '<div>Chart.js is not available. Ensure the CDN is loaded in index.html.</div>';
-    return;
+  const normalized = [];
+  let currentRowIndex = 0;
+
+  for (let t = startTime; t <= endTime; t += intervalMs) {
+    // Find the latest score that happened at or before this interval's time 't'
+    while (currentRowIndex < rows.length && new Date(rows[currentRowIndex].timestamp).getTime() <= t) {
+      currentRowIndex++;
+    }
+    
+    // We want the row just before the one we found (which is the last one at or before 't')
+    if (currentRowIndex > 0) {
+      normalized.push({
+        timestamp: new Date(t).toISOString(),
+        score: rows[currentRowIndex - 1].score
+      });
+    } else {
+      // If no data yet before this 't', just use the first point as a placeholder
+      normalized.push({
+        timestamp: new Date(t).toISOString(),
+        score: rows[0].score
+      });
+    }
   }
 
-  if (chart) {
-    chart.data.labels = labels;
-    chart.data.datasets[0].data = data;
-    chart.update();
-    return;
-  }
+  return normalized;
+}
 
-  const ctx = canvas.getContext('2d');
+function renderChart(rows, ign, scoreType = "Score") {
+  const ctx = el("scoreChart").getContext("2d");
+  
+  // Normalize to 6h intervals for 30d view
+  const normalizedRows = normalizeData(rows, 6 * 60 * 60 * 1000);
+
+  const labels = normalizedRows.map(r => new Date(r.timestamp).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }));
+  const data = normalizedRows.map(r => r.score);
+
+  if (chart) chart.destroy();
+
   chart = new Chart(ctx, {
-    type: 'line',
+    type: "line",
     data: {
       labels,
       datasets: [{
-        label: 'Score',
+        label: `${scoreType} History`,
         data,
-        borderColor: 'rgb(75, 192, 192)',
-        backgroundColor: 'rgba(75,192,192,0.08)',
-        tension: 0.2,
+        borderColor: "#2563eb",
+        backgroundColor: "rgba(37, 99, 235, 0.1)",
         fill: true,
-        pointRadius: 2
+        tension: 0,
+        pointRadius: 3,
+        pointHoverRadius: 6
       }]
     },
     options: {
       responsive: true,
+      maintainAspectRatio: false,
       plugins: {
+        legend: { display: false },
         tooltip: {
           mode: 'index',
           intersect: false,
-        },
-        legend: {
-          display: true
         }
-      },
-      interaction: {
-        mode: 'nearest',
-        axis: 'x',
-        intersect: false
       },
       scales: {
         x: {
-          display: true,
-          title: { display: true, text: 'Time' }
+          grid: { display: false },
+          ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: 8 }
         },
         y: {
-          display: true,
-          title: { display: true, text: 'Score' },
-          beginAtZero: false
+          beginAtZero: false,
+          ticks: { callback: (val) => val.toLocaleString() }
         }
       }
     }
   });
 }
 
-async function loadTopGainers() {
-  const container = el('topGainers');
-  container.innerText = 'Loading...';
-  try {
-    const top = await fetchTopGainers();
-    renderTopGainers(container, top);
-  } catch (err) {
-    container.innerText = 'Failed to load: ' + (err.message || err);
-  }
-}
+async function loadPlayerProfile(id) {
+  if (!id) return;
+  
+  el("emptyState").style.display = "none";
+  el("errorState").style.display = "none";
+  el("playerProfile").style.display = "block";
+  el("chartLoading").style.display = "flex";
+  
+  // Reset fields
+  el("displayIgn").innerText = "Loading...";
+  el("displayUuid").innerText = id;
+  el("displayGain").innerText = "---";
+  el("displayCurrentScore").innerText = "---";
 
-async function loadPlayerGain(uuid) {
-  const display = el('playerGain');
-  if (!uuid) {
-    display.innerText = 'Score gain: —';
-    return;
-  }
-  display.innerText = 'Loading...';
-  try {
-    const res = await fetchPlayerGain(uuid);
-    display.innerText = `Score gain (30d): ${res.score_gain}`;
-  } catch (err) {
-    display.innerText = 'Failed to load: ' + (err.message || err);
-  }
-}
-
-async function loadPlayerScores(uuid) {
-  const canvas = el('scoreChart');
-  if (!uuid) {
-    alert('Please enter a player UUID or select one from the top gainers');
-    return;
-  }
+  const selectedGame = games.find(g => g.id === Number(currentGameId));
+  const scoreType = selectedGame?.scoreType || "Score";
+  el("gainLabel").innerText = `30d ${scoreType} Gain`;
+  el("scoreLabel").innerText = `Current ${scoreType}`;
 
   try {
-    const res = await fetchPlayerScores(uuid);
-    if (!res.rows || res.rows.length === 0) {
-      alert('No score history available for this player in the last 30 days.');
-      // clear chart if exists
-      if (chart) {
-        chart.data.labels = [];
-        chart.data.datasets[0].data = [];
-        chart.update();
-      }
-      return;
+    const [gainData, scoreData] = await Promise.all([
+      apiFetch(`/player/${id}/score_gain`),
+      apiFetch(`/player/${id}/scores`)
+    ]);
+
+    el("displayIgn").innerText = gainData.ign;
+    el("displayUuid").innerText = formatUuid(gainData.player);
+    el("displayGain").innerText = gainData.score_gain.toLocaleString();
+    
+    if (scoreData.rows?.length) {
+      const currentScore = scoreData.rows[scoreData.rows.length - 1].score;
+      el("displayCurrentScore").innerText = currentScore.toLocaleString();
+      renderChart(scoreData.rows, scoreData.ign, scoreType);
+    } else {
+      el("displayCurrentScore").innerText = "No data";
+      if (chart) chart.destroy();
     }
-    renderTimeSeries(canvas, res.rows);
   } catch (err) {
-    alert('Failed to load scores: ' + (err.message || err));
+    console.error(err);
+    el("playerProfile").style.display = "none";
+    el("errorState").style.display = "block";
+    el("errorTitle").innerText = "Player Not Found";
+    el("errorMessage").innerText = `We couldn't find data for "${id}". Check the name or UUID and try again.`;
+  } finally {
+    el("chartLoading").style.display = "none";
   }
 }
 
-// Wire up UI
-(function init() {
-  // Initial load of top gainers
-  loadTopGainers();
+function resetSearch() {
+  el("errorState").style.display = "none";
+  el("playerProfile").style.display = "none";
+  el("emptyState").style.display = "block";
+  el("playerSearch").value = "";
+  el("playerSearch").focus();
+}
 
-  // Default player input value if present in DOM
-  const defaultUuidInput = el('playerUuid');
-  if (defaultUuidInput && defaultUuidInput.value.trim()) {
-    // pre-load gain (but not time series to avoid unnecessary queries)
-    loadPlayerGain(defaultUuidInput.value.trim());
-  }
-
-  const btnGain = el('loadPlayerGain');
-  if (btnGain) {
-    btnGain.addEventListener('click', async () => {
-      const uuid = el('playerUuid').value.trim();
-      await loadPlayerGain(uuid);
+async function init() {
+  try {
+    const fetchedGames = await apiFetch("/games");
+    games = fetchedGames.filter(g => g.shouldTrack);
+    const selector = el("gameSelector");
+    games.forEach(game => {
+      const opt = document.createElement("option");
+      opt.value = game.id;
+      opt.textContent = game.displayName;
+      selector.appendChild(opt);
     });
+
+    selector.onchange = (e) => {
+      currentGameId = e.target.value || null;
+      // Refresh data
+      refreshAll();
+    };
+
+    refreshAll();
+  } catch (err) {
+    console.error("Initialization failed", err);
   }
 
-  const btnScores = el('loadPlayerScores');
-  if (btnScores) {
-    btnScores.addEventListener('click', async () => {
-      const uuid = el('playerUuid').value.trim();
-      await loadPlayerScores(uuid);
-    });
+  el("loadPlayerBtn").onclick = () => {
+    const query = el("playerSearch").value.trim();
+    if (query) loadPlayerProfile(query);
+  };
+
+  el("playerSearch").onkeyup = (e) => {
+    if (e.key === "Enter") {
+      const query = el("playerSearch").value.trim();
+      if (query) loadPlayerProfile(query);
+    }
+  };
+}
+
+async function refreshAll() {
+  try {
+    el("topGainers").innerText = "Loading...";
+    const topGainers = await apiFetch("/top-gainers");
+    renderTopGainers(topGainers);
+  } catch (err) {
+    el("topGainers").innerText = "Failed to load top gainers";
   }
-})();
+
+  // If a player is already being viewed, refresh their profile too
+  if (el("playerProfile").style.display === "block") {
+    const currentUuid = el("displayUuid").innerText;
+    if (currentUuid && currentUuid !== "---") {
+      loadPlayerProfile(currentUuid);
+    }
+  }
+}
+
+init();
