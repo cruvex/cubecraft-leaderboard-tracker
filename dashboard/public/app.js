@@ -2,13 +2,20 @@ const apiBase = "/api";
 let chart = null;
 let games = [];
 let currentGameId = null;
+let currentDays = 30;
 
 const el = (id) => document.getElementById(id);
 
 async function apiFetch(endpoint) {
   const isInternal = endpoint.startsWith("/");
   const separator = endpoint.includes("?") ? "&" : "?";
-  const url = (isInternal && currentGameId) ? `${endpoint}${separator}gameId=${currentGameId}` : endpoint;
+  let url = (isInternal && currentGameId) ? `${endpoint}${separator}gameId=${currentGameId}` : endpoint;
+  
+  if (isInternal) {
+    const daySeparator = url.includes("?") ? "&" : "?";
+    url = `${url}${daySeparator}days=${currentDays}`;
+  }
+
   const res = await fetch(isInternal ? `${apiBase}${url}` : url);
   if (!res.ok) throw new Error(`API Error: ${res.status}`);
   return res.json();
@@ -60,87 +67,78 @@ function renderTopGainers(data) {
   container.appendChild(table);
 }
 
-function normalizeData(rows, intervalMs = 6 * 60 * 60 * 1000) {
-  if (!rows || rows.length < 2) return rows;
-
-  const firstDate = new Date(rows[0].timestamp);
-  const lastDate = new Date(rows[rows.length - 1].timestamp);
-  
-  // Align start to the nearest interval boundary below
-  const startTime = Math.floor(firstDate.getTime() / intervalMs) * intervalMs;
-  const endTime = Math.ceil(lastDate.getTime() / intervalMs) * intervalMs;
-
-  const normalized = [];
-  let currentRowIndex = 0;
-
-  for (let t = startTime; t <= endTime; t += intervalMs) {
-    // Find the latest score that happened at or before this interval's time 't'
-    while (currentRowIndex < rows.length && new Date(rows[currentRowIndex].timestamp).getTime() <= t) {
-      currentRowIndex++;
-    }
-    
-    // We want the row just before the one we found (which is the last one at or before 't')
-    if (currentRowIndex > 0) {
-      normalized.push({
-        timestamp: new Date(t).toISOString(),
-        score: rows[currentRowIndex - 1].score
-      });
-    } else {
-      // If no data yet before this 't', just use the first point as a placeholder
-      normalized.push({
-        timestamp: new Date(t).toISOString(),
-        score: rows[0].score
-      });
-    }
-  }
-
-  return normalized;
-}
 
 function renderChart(rows, ign, scoreType = "Score") {
   const ctx = el("scoreChart").getContext("2d");
   
-  // Normalize to 6h intervals for 30d view
-  const normalizedRows = normalizeData(rows, 6 * 60 * 60 * 1000);
+  const timestamps = rows.map(r => new Date(r.timestamp).getTime());
+  const minTime = Math.min(...timestamps);
+  const maxTime = Math.max(...timestamps);
 
-  const labels = normalizedRows.map(r => new Date(r.timestamp).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }));
-  const data = normalizedRows.map(r => r.score);
+  const chartData = rows.map(r => ({
+    x: new Date(r.timestamp).getTime(),
+    y: r.score
+  }));
 
   if (chart) chart.destroy();
 
   chart = new Chart(ctx, {
     type: "line",
     data: {
-      labels,
       datasets: [{
         label: `${scoreType} History`,
-        data,
+        data: chartData,
         borderColor: "#2563eb",
         backgroundColor: "rgba(37, 99, 235, 0.1)",
         fill: true,
         tension: 0,
         pointRadius: 3,
-        pointHoverRadius: 6
+        pointHoverRadius: 6,
+        pointBackgroundColor: "#2563eb",
+        clip: false
       }]
     },
     options: {
       responsive: true,
       maintainAspectRatio: false,
+      layout: {
+        padding: {
+          left: 5,
+          right: 5
+        }
+      },
       plugins: {
         legend: { display: false },
         tooltip: {
           mode: 'index',
           intersect: false,
+          callbacks: {
+            title: (tooltipItems) => {
+              const date = new Date(tooltipItems[0].parsed.x);
+              return date.toLocaleString();
+            }
+          }
         }
       },
       scales: {
         x: {
+          type: 'linear',
+          min: minTime,
+          max: maxTime,
           grid: { display: false },
-          ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: 8 }
+          ticks: { 
+            maxRotation: 0, 
+            autoSkip: true, 
+            stepSize: 24 * 60 * 60 * 1000,
+            callback: (val) => new Date(val).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+          }
         },
         y: {
           beginAtZero: false,
-          ticks: { callback: (val) => val.toLocaleString() }
+          ticks: {
+            precision: 0,
+            callback: (val) => val.toLocaleString()
+          }
         }
       }
     }
@@ -163,7 +161,7 @@ async function loadPlayerProfile(id) {
 
   const selectedGame = games.find(g => g.id === Number(currentGameId));
   const scoreType = selectedGame?.scoreType || "Score";
-  el("gainLabel").innerText = `30d ${scoreType} Gain`;
+  el("gainLabel").innerText = `${currentDays}d ${scoreType} Gain`;
   el("scoreLabel").innerText = `Current ${scoreType}`;
 
   try {
@@ -218,6 +216,11 @@ async function init() {
     selector.onchange = (e) => {
       currentGameId = e.target.value || null;
       // Refresh data
+      refreshAll();
+    };
+
+    el("daysSelector").onchange = (e) => {
+      currentDays = Number(e.target.value);
       refreshAll();
     };
 
