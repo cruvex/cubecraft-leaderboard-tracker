@@ -71,9 +71,10 @@ function renderTopGainers(data) {
 function renderChart(rows, ign, scoreType = "Score") {
   const ctx = el("scoreChart").getContext("2d");
   
+  const now = Date.now();
   const timestamps = rows.map(r => new Date(r.timestamp).getTime());
   const minTime = Math.min(...timestamps);
-  const maxTime = Math.max(...timestamps);
+  const maxTime = Math.max(...timestamps, now);
 
   const chartData = rows.map(r => ({
     x: new Date(r.timestamp).getTime(),
@@ -95,7 +96,8 @@ function renderChart(rows, ign, scoreType = "Score") {
         pointRadius: 3,
         pointHoverRadius: 6,
         pointBackgroundColor: "#2563eb",
-        clip: false
+        clip: false,
+        borderWidth: 3
       }]
     },
     options: {

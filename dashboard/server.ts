@@ -78,6 +78,7 @@ Bun.serve({
     "/": Bun.file(join(publicDir, "index.html")),
     "/index.html": Bun.file(join(publicDir, "index.html")),
     "/app.js": Bun.file(join(publicDir, "app.js")),
+    "/favicon.ico": Bun.file(join(publicDir, "favicon.ico")),
   },
   async fetch(req: Request) {
     // If we reach here, no static or api route matched
