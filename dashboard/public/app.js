@@ -72,9 +72,8 @@ function renderChart(rows, ign, scoreType = "Score") {
   const ctx = el("scoreChart").getContext("2d");
   
   const now = Date.now();
-  const timestamps = rows.map(r => new Date(r.timestamp).getTime());
-  const minTime = Math.min(...timestamps);
-  const maxTime = Math.max(...timestamps, now);
+  const maxTime = now;
+  const minTime = now - (currentDays * 24 * 60 * 60 * 1000);
 
   const chartData = rows.map(r => ({
     x: new Date(r.timestamp).getTime(),
@@ -205,6 +204,9 @@ function resetSearch() {
 
 async function init() {
   try {
+    // Sync currentDays with the initial value of the selector
+    currentDays = Number(el("daysSelector").value);
+
     const fetchedGames = await apiFetch("/games");
     games = fetchedGames.filter(g => g.shouldTrack);
     const selector = el("gameSelector");
