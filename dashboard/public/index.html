@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>Leaderboard Dashboard</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<<<<<<< Updated upstream
     <style>
       :root {
         --primary: #2563eb;
@@ -256,17 +257,26 @@
         font-size: 0.8rem;
       }
     </style>
+=======
+    <link rel="stylesheet" href="style.css" />
+>>>>>>> Stashed changes
   </head>
   <body>
     <nav class="navbar">
       <h1>Leaderboard Tracker</h1>
+<<<<<<< Updated upstream
       <div style="display: flex; align-items: center; gap: 1rem;">
         <select id="gameSelector" style="padding: 0.4rem; border-radius: 6px; border: 1px solid var(--border); font-size: 0.875rem;">
+=======
+      <div class="nav-controls">
+        <select id="gameSelector">
+>>>>>>> Stashed changes
           <option value="">All Games</option>
         </select>
       </div>
     </nav>
 
+<<<<<<< Updated upstream
     <div class="container">
       <aside>
         <div class="card" id="topGainersCard" style="position: sticky; top: 5rem;">
@@ -279,6 +289,25 @@
           </div>
           <div id="topGainersContainer" class="top-gainers-wrapper">
             <div id="topGainers" class="text-muted">Loading...</div>
+=======
+    <div class="warning-banner">
+      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+      <span>Notice: Historical data is currently only available starting from March 19th, 2026.</span>
+    </div>
+
+    <div class="container">
+      <aside>
+        <div class="card sticky-sidebar" id="topGainersCard">
+          <div class="card-title">
+            <span>Top Gainers</span>
+            <div class="toggle-group" id="daysToggle">
+              <button class="toggle-btn" data-days="7">7D</button>
+              <button class="toggle-btn active" data-days="30">30D</button>
+            </div>
+          </div>
+          <div id="topGainersContainer" class="top-gainers-wrapper">
+            <div id="topGainers" class="text-muted centered-p">Loading...</div>
+>>>>>>> Stashed changes
           </div>
         </div>
       </aside>
@@ -308,7 +337,11 @@
               </div>
             </div>
 
+<<<<<<< Updated upstream
             <div id="chartWrapper" style="position: relative;">
+=======
+            <div id="chartWrapper" class="chart-wrapper">
+>>>>>>> Stashed changes
               <div id="chartLoading" class="loading-overlay">Loading chart...</div>
               <div id="chartContainer">
                 <canvas id="scoreChart"></canvas>
@@ -321,7 +354,11 @@
             <p id="errorMessage">We couldn't find any data for the requested player.</p>
           </div>
           
+<<<<<<< Updated upstream
           <div id="emptyState" class="text-muted" style="text-align: center; padding: 3rem 0;">
+=======
+          <div id="emptyState" class="text-muted empty-state">
+>>>>>>> Stashed changes
             Select a player from the list or enter a UUID to see details.
           </div>
         </div>
