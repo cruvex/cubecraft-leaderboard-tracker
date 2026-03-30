@@ -78,10 +78,7 @@ Bun.serve({
     "/": Bun.file(join(publicDir, "index.html")),
     "/index.html": Bun.file(join(publicDir, "index.html")),
     "/app.js": Bun.file(join(publicDir, "app.js")),
-<<<<<<< Updated upstream
-=======
     "/style.css": Bun.file(join(publicDir, "style.css")),
->>>>>>> Stashed changes
     "/favicon.ico": Bun.file(join(publicDir, "favicon.ico")),
   },
   async fetch(req: Request) {
