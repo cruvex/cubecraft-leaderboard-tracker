@@ -1,8 +1,9 @@
 const apiBase = "/api";
 let chart = null;
 let games = [];
-let currentGameId = null;
+let currentGameId = 11;
 let currentDays = 30;
+const enabledGames = ["team_eggwars", "solo_skywars"];
 
 const el = (id) => document.getElementById(id);
 
@@ -237,9 +238,11 @@ async function init() {
     games = fetchedGames.filter(g => g.shouldTrack);
     const selector = el("gameSelector");
     games.forEach(game => {
+      if (!enabledGames.includes(game.name)) return;
       const opt = document.createElement("option");
       opt.value = game.id;
       opt.textContent = game.displayName;
+      opt.selected = game.id === currentGameId;
       selector.appendChild(opt);
     });
 
