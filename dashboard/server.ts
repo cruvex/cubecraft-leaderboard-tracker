@@ -53,15 +53,6 @@ Bun.serve({
       const out = await db.getTopGainers(days, 50, gameId);
       return jsonResponse(out);
     },
-    "/api/player/:id/score_gain": async (req) => {
-      const id = await resolvePlayerId(req.params.id);
-      const url = new URL(req.url);
-      const days = Number(url.searchParams.get("days") || 30);
-      const gameId = url.searchParams.get("gameId") ? Number(url.searchParams.get("gameId")) : undefined;
-      const data = await db.getPlayerGain(id, days, gameId);
-      if (!data) return jsonResponse({ error: "Player not found" }, 404);
-      return jsonResponse(data);
-    },
     "/api/player/:id/scores": async (req) => {
       const id = await resolvePlayerId(req.params.id);
       const url = new URL(req.url);
@@ -80,6 +71,7 @@ Bun.serve({
     "/app.js": Bun.file(join(publicDir, "app.js")),
     "/style.css": Bun.file(join(publicDir, "style.css")),
     "/favicon.ico": Bun.file(join(publicDir, "favicon.ico")),
+    "/player/:id": Bun.file(join(publicDir, "index.html")),
   },
   async fetch(req: Request) {
     // If we reach here, no static or api route matched

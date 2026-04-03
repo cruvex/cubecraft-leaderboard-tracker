@@ -65,37 +65,6 @@ export async function getTopGainers(days = 30, limit = 50, gameId?: number) {
   }));
 }
 
-export async function getPlayerGain(uuid: string, days = 30, gameId?: number) {
-  const res = await Bun.sql`
-    WITH player_scores AS (
-      SELECT ls.timestamp, lr.score
-      FROM leaderboard_rows lr
-      JOIN leaderboard_snapshots ls ON lr.snapshot_id = ls.id
-      WHERE lr.player = ${uuid}
-        AND ls.timestamp >= NOW() - CAST(${days + " days"} AS INTERVAL)
-        ${gameId != null ? Bun.sql`AND ls.game_id = ${gameId}` : Bun.sql``}
-      ORDER BY ls.timestamp
-    ),
-    player_ign AS (
-      SELECT player_ign
-      FROM ign_history
-      WHERE player_uuid = ${uuid}
-      ORDER BY id DESC
-      LIMIT 1
-    )
-    SELECT
-      (SELECT MAX(score) - MIN(score) FROM player_scores) AS score_gain,
-      (SELECT player_ign FROM player_ign) AS ign;
-  `;
-
-  if (!res || res.length === 0) return null;
-
-  return {
-    player: uuid,
-    ign: res[0].ign || "Unknown",
-    score_gain: res[0].score_gain == null ? 0 : Number(res[0].score_gain),
-  };
-}
 
 export async function getPlayerScores(uuid: string, days = 30, gameId?: number) {
   const scores = await Bun.sql`

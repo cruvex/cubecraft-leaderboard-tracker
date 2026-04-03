@@ -155,10 +155,9 @@ function renderChart(rows, ign, scoreType = "Score") {
 async function loadPlayerProfile(id) {
   if (!id) return;
 
-  // Update URL query parameters
-  const url = new URL(window.location.href);
-  url.searchParams.set("player", id);
-  window.history.replaceState({}, "", url);
+  // Update URL path
+  const newPath = `/player/${id}`;
+  window.history.replaceState({}, "", newPath);
 
   el("emptyState").style.display = "none";
   el("errorState").style.display = "none";
@@ -177,20 +176,23 @@ async function loadPlayerProfile(id) {
   el("scoreLabel").innerText = `Current ${scoreType}`;
 
   try {
-    const [gainData, scoreData] = await Promise.all([
-      apiFetch(`/player/${id}/score_gain`),
-      apiFetch(`/player/${id}/scores`)
-    ]);
+    const scoreData = await apiFetch(`/player/${id}/scores`);
 
-    el("displayIgn").innerText = gainData.ign;
-    el("displayUuid").innerText = formatUuid(gainData.player);
-    el("displayGain").innerText = gainData.score_gain.toLocaleString();
+    el("displayIgn").innerText = scoreData.ign;
+    el("displayUuid").innerText = formatUuid(scoreData.player);
     
     if (scoreData.rows?.length) {
+      const scores = scoreData.rows.map(r => r.score);
+      const minScore = Math.min(...scores);
+      const maxScore = Math.max(...scores);
+      const scoreGain = maxScore - minScore;
+
       const currentScore = scoreData.rows[scoreData.rows.length - 1].score;
+      el("displayGain").innerText = scoreGain.toLocaleString();
       el("displayCurrentScore").innerText = currentScore.toLocaleString();
       renderChart(scoreData.rows, scoreData.ign, scoreType);
     } else {
+      el("displayGain").innerText = "0";
       el("displayCurrentScore").innerText = "No data";
       if (chart) chart.destroy();
     }
@@ -206,10 +208,8 @@ async function loadPlayerProfile(id) {
 }
 
 function resetSearch() {
-  // Clear URL query parameters
-  const url = new URL(window.location.href);
-  url.searchParams.delete("player");
-  window.history.replaceState({}, "", url);
+  // Clear URL path
+  window.history.replaceState({}, "", "/");
 
   el("errorState").style.display = "none";
   el("playerProfile").style.display = "none";
@@ -219,8 +219,11 @@ function resetSearch() {
 }
 
 async function init() {
-  const url = new URL(window.location.href);
-  const playerId = url.searchParams.get("player");
+  const pathname = window.location.pathname;
+  let playerId = null;
+  if (pathname.startsWith("/player/")) {
+    playerId = decodeURIComponent(pathname.split("/").pop());
+  }
   
   resetSearch()
   try {
@@ -261,7 +264,7 @@ async function init() {
 
     refreshAll();
     
-    // Load player from query params if captured before resetSearch
+    // Load player from pathname if captured before resetSearch
     if (playerId) {
       loadPlayerProfile(playerId);
     }
