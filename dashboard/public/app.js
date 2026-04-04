@@ -247,7 +247,8 @@ async function init() {
     });
 
     selector.onchange = (e) => {
-      currentGameId = e.target.value || null;
+      currentGameId = Number(e.target.value) || null;
+      updateWarningBanner();
       // Refresh data
       refreshAll();
     };
@@ -266,6 +267,7 @@ async function init() {
     };
 
     refreshAll();
+    updateWarningBanner();
     
     // Load player from pathname if captured before resetSearch
     if (playerId) {
@@ -286,6 +288,21 @@ async function init() {
       if (query) loadPlayerProfile(query);
     }
   };
+}
+
+function updateWarningBanner() {
+  const selectedGame = games.find(g => g.id === Number(currentGameId));
+  const warningText = el("warningText");
+  if (!selectedGame || !warningText) return;
+
+  let dateStr = "March 19th, 2026";
+  if (selectedGame.name === "solo_skywars") {
+    dateStr = "April 2nd, 2026";
+  } else if (selectedGame.name === "team_eggwars") {
+    dateStr = "March 19th, 2026";
+  }
+
+  warningText.innerText = `Notice: Historical data is currently only available starting from ${dateStr}.`;
 }
 
 async function refreshAll() {
