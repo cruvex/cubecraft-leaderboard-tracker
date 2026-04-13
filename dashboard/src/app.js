@@ -3,7 +3,13 @@ let chart = null;
 let games = [];
 let currentGameId = 11;
 let currentDays = 30;
+let currentPlayerId = null;
 const enabledGames = ["team_eggwars", "solo_skywars"];
+
+const TRACKING_START_DATES = {
+  solo_skywars: "April 2nd, 2026",
+  team_eggwars: "March 19th, 2026",
+};
 
 const el = (id) => document.getElementById(id);
 
@@ -159,6 +165,7 @@ async function loadPlayerProfile(id) {
   // Update URL path
   const newPath = `/player/${id}`;
   window.history.replaceState({}, "", newPath);
+  currentPlayerId = id;
 
   el("emptyState").style.display = "none";
   el("errorState").style.display = "none";
@@ -221,9 +228,8 @@ function resetSearch() {
 
 async function init() {
   const pathname = window.location.pathname;
-  let playerId = null;
   if (pathname.startsWith("/player/")) {
-    playerId = decodeURIComponent(pathname.split("/").pop());
+    currentPlayerId = decodeURIComponent(pathname.split("/").pop());
   }
   
   resetSearch()
@@ -250,7 +256,8 @@ async function init() {
       currentGameId = Number(e.target.value) || null;
       updateWarningBanner();
       // Refresh data
-      refreshAll();
+      loadTopGainers();
+      if (currentPlayerId) loadPlayerProfile(currentPlayerId);
     };
 
     el("daysToggle").onclick = (e) => {
@@ -263,16 +270,15 @@ async function init() {
       el("daysToggle").querySelectorAll(".toggle-btn").forEach(b => b.classList.remove("active"));
       btn.classList.add("active");
 
-      refreshAll();
+      loadTopGainers();
     };
 
-    refreshAll();
     updateWarningBanner();
-    
-    // Load player from pathname if captured before resetSearch
-    if (playerId) {
-      loadPlayerProfile(playerId);
-    }
+
+    await Promise.all([
+      loadTopGainers(),
+      currentPlayerId ? loadPlayerProfile(currentPlayerId) : Promise.resolve(),
+    ]);
   } catch (err) {
     console.error("Initialization failed", err);
   }
@@ -291,36 +297,23 @@ async function init() {
 }
 
 function updateWarningBanner() {
-  const selectedGame = games.find(g => g.id === Number(currentGameId));
+  const selectedGame = games.find((g) => g.id === Number(currentGameId));
   const warningText = el("warningText");
   if (!selectedGame || !warningText) return;
 
-  let dateStr = "March 19th, 2026";
-  if (selectedGame.name === "solo_skywars") {
-    dateStr = "April 2nd, 2026";
-  } else if (selectedGame.name === "team_eggwars") {
-    dateStr = "March 19th, 2026";
-  }
-
-  warningText.innerText = `Notice: Historical data is currently only available starting from ${dateStr}.`;
+  const dateStr = TRACKING_START_DATES[selectedGame.name] ?? "recently";
+  warningText.textContent = `Notice: Historical data is currently only available starting from ${dateStr}.`;
 }
 
-async function refreshAll() {
+async function loadTopGainers() {
+  const container = el("topGainers");
+  container.innerHTML = '<div class="text-muted centered-p" style="padding: 1.5rem;">Loading...</div>';
+
   try {
-    const container = el("topGainers");
-    container.innerHTML = '<div class="text-muted centered-p" style="padding: 1.5rem;">Loading...</div>';
     const topGainers = await apiFetch("/top-gainers");
     renderTopGainers(topGainers);
   } catch (err) {
     el("topGainers").innerHTML = '<div class="text-muted centered-p error-text" style="padding: 1.5rem;">Failed to load data</div>';
-  }
-
-  // If a player is already being viewed, refresh their profile too
-  if (el("playerProfile").style.display === "block") {
-    const currentUuid = el("displayUuid").innerText;
-    if (currentUuid && currentUuid !== "---") {
-      loadPlayerProfile(currentUuid);
-    }
   }
 }
 
