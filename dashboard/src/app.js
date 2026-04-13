@@ -271,6 +271,7 @@ async function init() {
       btn.classList.add("active");
 
       loadTopGainers();
+      if (currentPlayerId) loadPlayerProfile(currentPlayerId);
     };
 
     updateWarningBanner();
