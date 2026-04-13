@@ -41,6 +41,7 @@ async function processGame(game: Game) {
 
     const uuidMap = await resolvePlayerUUIDs(igns);
 
+    // Expect all uuids for players on leaderboard to be resolved
     if (uuidMap.size != 200) {
       console.log(`Player cache size: ${uuidMap.size} (expected 200)`);
 

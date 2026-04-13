@@ -1,9 +1,21 @@
 {
-  "dependencies": {
-    "uuidv7": "^1.1.0",
-    "zod": "^4.3.6"
+  "name": "cubecraft-leaderboard-tracker",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "dashboard",
+    "scraper",
+    "api"
+  ],
+  "scripts": {
+    "build": "vite build dashboard",
+    "dev": "vite dashboard"
   },
   "devDependencies": {
-    "@types/bun": "^1.3.11"
+    "@types/bun": "latest",
+    "vite": "^8.0.8"
+  },
+  "dependencies": {
+    "zod": "^4.3.6"
   }
 }

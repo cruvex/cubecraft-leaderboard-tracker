@@ -1,0 +1,14 @@
+:80 {
+    root * /srv
+
+    # proxy API calls to the Bun service via Railway's private network
+    handle /api/* {
+        reverse_proxy {$BACKEND_URL}
+    }
+
+    # serve the SPA, fall back to index.html for client-side routing
+    handle {
+        try_files {path} /index.html
+        file_server
+    }
+}
