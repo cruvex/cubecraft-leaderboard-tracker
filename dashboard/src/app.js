@@ -48,6 +48,7 @@ function renderTopGainers(data) {
   table.innerHTML = `
     <thead>
       <tr>
+        <th class="text-center">#</th>
         <th class="text-center">Player</th>
         <th class="text-center">Gain</th>
       </tr>
@@ -56,10 +57,14 @@ function renderTopGainers(data) {
   `;
   
   const tbody = table.querySelector("tbody");
+  let i = 0;
   data.forEach(row => {
     const tr = document.createElement("tr");
     tr.className = "clickable";
     tr.innerHTML = `
+      <td>
+      ${i + 1}.
+      </td>
       <td>
         <div class="player-ign-cell">${row.ign}</div>
       </td>
@@ -69,6 +74,7 @@ function renderTopGainers(data) {
     `;
     tr.onclick = () => loadPlayerProfile(row.player);
     tbody.appendChild(tr);
+    i++;
   });
   
   container.appendChild(table);
