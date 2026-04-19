@@ -238,7 +238,7 @@ tr.clickable:hover { background: var(--bg); }
 }
 
 #topGainersCard {
-  max-height: 720px;
+  max-height: 713px;
 }
 
 /* Hide horizontal scroll if any */
