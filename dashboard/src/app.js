@@ -357,6 +357,9 @@ function renderLeaderboardChart(data) {
 
   const rows = data.rows || [];
 
+  const values = rows.map(d => d.score);
+  const max = Math.max(...values);
+
   leaderboardChart = new Chart(ctx, {
     type: 'bar',
     data: {
@@ -366,7 +369,8 @@ function renderLeaderboardChart(data) {
         data: rows.map(d => d.score),
         backgroundColor: "rgba(37, 99, 235, 0.7)",
         borderColor: "#2563eb",
-        borderWidth: 1
+        borderWidth: 1,
+        xAxisID: 'xBottom'
       }]
     },
     options: {
@@ -384,8 +388,23 @@ function renderLeaderboardChart(data) {
         }
       },
       scales: {
-        x: {
-          beginAtZero: false,
+        xTop: {
+          type: 'linear',
+          position: 'top',
+          max,
+          beginAtZero: true,
+          ticks: {
+            callback: (val) => val.toLocaleString()
+          }
+        },
+        xBottom: {
+          type: 'linear',
+          position: 'bottom',
+          max,
+          beginAtZero: true,
+          grid: {
+            drawOnChartArea: false
+          },
           ticks: {
             callback: (val) => val.toLocaleString()
           }
