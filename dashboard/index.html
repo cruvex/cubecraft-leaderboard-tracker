@@ -39,7 +39,7 @@
         </div>
       </aside>
 
-      <index>
+      <main>
         <div class="card">
           <div class="card-title">Player Search</div>
           <div class="input-group">
@@ -81,7 +81,15 @@
             Select a player from the list or enter a UUID to see details.
           </div>
         </div>
-      </index>
+      </main>
+
+      <div class="card leaderboard-card" style="margin-top: 1rem;">
+        <div class="card-title" id="leaderboardTitle">Full Leaderboard</div>
+        <div class="chart-wrapper" style="height: auto; min-height: 400px;">
+          <div id="leaderboardLoading" class="loading-overlay" style="display: none;">Loading leaderboard...</div>
+          <canvas id="leaderboardChart"></canvas>
+        </div>
+      </div>
     </div>
 
     <script type=module src="src/app.js"></script>
