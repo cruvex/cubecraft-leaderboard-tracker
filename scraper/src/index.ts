@@ -139,7 +139,7 @@ async function getCachedPlayers(igns: string[]): Promise<PlayerProfile[]> {
         player_ign AS ign,
         player_uuid AS uuid
     FROM ign_history
-    WHERE LOWER(player_ign) IN ${Bun.sql(igns.map((ign) => ign.toLowerCase()))}
+    WHERE player_ign IN ${Bun.sql(igns)}
     ORDER BY player_uuid, id
   `;
 
