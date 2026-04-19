@@ -1,5 +1,6 @@
 const apiBase = "/api";
 let chart = null;
+let leaderboardChart = null;
 let games = [];
 let currentGameId = 11;
 let currentDays = 30;
@@ -72,7 +73,10 @@ function renderTopGainers(data) {
         <span class="badge">+${row.score_gain.toLocaleString()}</span>
       </td>
     `;
-    tr.onclick = () => loadPlayerProfile(row.player);
+    tr.onclick = () => {
+      loadPlayerProfile(row.player);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
     tbody.appendChild(tr);
     i++;
   });
@@ -263,6 +267,7 @@ async function init() {
       updateWarningBanner();
       // Refresh data
       loadTopGainers();
+      loadLeaderboard();
       if (currentPlayerId) loadPlayerProfile(currentPlayerId);
     };
 
@@ -284,6 +289,7 @@ async function init() {
 
     await Promise.all([
       loadTopGainers(),
+      loadLeaderboard(),
       currentPlayerId ? loadPlayerProfile(currentPlayerId) : Promise.resolve(),
     ]);
   } catch (err) {
@@ -322,6 +328,94 @@ async function loadTopGainers() {
   } catch (err) {
     el("topGainers").innerHTML = '<div class="text-muted centered-p error-text" style="padding: 1.5rem;">Failed to load data</div>';
   }
+}
+
+async function loadLeaderboard() {
+  el("leaderboardLoading").style.display = "flex";
+  try {
+    const leaderboard = await apiFetch("/leaderboard");
+    renderLeaderboardChart(leaderboard);
+  } catch (err) {
+    console.error("Failed to load leaderboard", err);
+  } finally {
+    el("leaderboardLoading").style.display = "none";
+  }
+}
+
+function renderLeaderboardChart(data) {
+  const ctx = el("leaderboardChart").getContext("2d");
+  
+  if (leaderboardChart) leaderboardChart.destroy();
+
+  const selectedGame = games.find(g => g.id === Number(currentGameId));
+  const scoreType = selectedGame?.scoreType || "Score";
+  const gameDisplayName = selectedGame?.displayName || "Full";
+  
+  let titleText = `${gameDisplayName} Leaderboard`;
+  if (data.timestamp) {
+    const date = new Date(data.timestamp);
+    titleText += ` <span class="text-muted" style="font-size: 0.8rem; font-weight: normal; margin-left: 0.5rem;">${date.toLocaleString()}</span>`;
+  }
+  el("leaderboardTitle").innerHTML = titleText;
+
+  const rows = data.rows || [];
+
+  leaderboardChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: rows.map((d, i) => `${i + 1}. ${d.ign}`),
+      datasets: [{
+        label: scoreType,
+        data: rows.map(d => d.score),
+        backgroundColor: "rgba(37, 99, 235, 0.7)",
+        borderColor: "#2563eb",
+        borderWidth: 1
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: (context) => {
+              return `${scoreType}: ${context.parsed.x.toLocaleString()}`;
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          beginAtZero: false,
+          ticks: {
+            callback: (val) => val.toLocaleString()
+          }
+        },
+        y: {
+          ticks: {
+            autoSkip: false,
+            padding: 10,
+            crossAlign: 'far',
+            font: { size: 12 }
+          }
+        }
+      },
+      onClick: (e, elements) => {
+        if (elements.length > 0) {
+          const index = elements[0].index;
+          const player = rows[index];
+          loadPlayerProfile(player.player);
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+      }
+    }
+  });
+
+  // Dynamically adjust height based on number of players
+  const chartHeight = Math.max(400, rows.length * 25);
+  el("leaderboardChart").parentElement.style.height = `${chartHeight}px`;
 }
 
 init();

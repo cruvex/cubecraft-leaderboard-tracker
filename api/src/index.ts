@@ -34,6 +34,14 @@ Bun.serve({
             const out = await db.getTopGainers(days, 50, gameId);
             return jsonResponse(out);
         },
+        "/api/leaderboard": async (req) => {
+            const url = new URL(req.url);
+            const gameId = url.searchParams.get("gameId") ? Number(url.searchParams.get("gameId")) : undefined;
+            const limitStr = url.searchParams.get("limit");
+            const limit = limitStr ? Number(limitStr) : undefined;
+            const out = await db.getLeaderboard(gameId, limit);
+            return jsonResponse(out);
+        },
         "/api/player/:id/scores": async (req) => {
             const id = await resolvePlayerId(req.params.id);
             const url = new URL(req.url);

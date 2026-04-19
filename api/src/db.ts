@@ -65,6 +65,48 @@ export async function getTopGainers(days = 30, limit = 50, gameId?: number) {
   }));
 }
 
+export async function getLeaderboard(gameId?: number, limit?: number) {
+  const res = await Bun.sql`
+    WITH latest_snapshot AS (
+        SELECT id, timestamp FROM leaderboard_snapshots
+        WHERE 1=1
+        ${gameId != null ? Bun.sql`AND game_id = ${gameId}` : Bun.sql``}
+        ORDER BY timestamp DESC
+        LIMIT 1
+    ),
+    player_igns AS (
+        SELECT DISTINCT ON (player_uuid)
+            player_uuid,
+            player_ign
+        FROM ign_history
+        ORDER BY player_uuid, id DESC
+    )
+    SELECT
+        lr.player AS uuid,
+        pi.player_ign AS ign,
+        lr.score,
+        ls.timestamp
+    FROM leaderboard_rows lr
+    JOIN latest_snapshot ls ON lr.snapshot_id = ls.id
+    LEFT JOIN player_igns pi ON lr.player::uuid = pi.player_uuid
+    ORDER BY lr.score DESC
+    ${limit != null ? Bun.sql`LIMIT ${limit}` : Bun.sql``}
+  `;
+
+  if (!res || res.length === 0) return { rows: [], timestamp: null };
+
+  const rows = res.map((r: any) => ({
+    player: r.uuid,
+    ign: r.ign || "Unknown",
+    score: r.score == null ? 0 : Number(r.score),
+  }));
+
+  return {
+    rows,
+    timestamp: res[0].timestamp instanceof Date ? res[0].timestamp.toISOString() : String(res[0].timestamp)
+  };
+}
+
 
 export async function getPlayerScores(uuid: string, days = 30, gameId?: number) {
   const scores = await Bun.sql`

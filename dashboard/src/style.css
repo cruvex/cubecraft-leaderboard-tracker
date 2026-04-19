@@ -407,3 +407,7 @@ code {
   font-size: 0.8rem;
 }
 
+
+.leaderboard-card {
+  grid-column: 1 / -1;
+}
