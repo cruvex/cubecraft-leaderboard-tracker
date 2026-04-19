@@ -100,17 +100,17 @@ body {
 }
 
 @media (max-width: 900px) {
-  .container { 
-    grid-template-columns: 1fr; 
+  .container {
+    grid-template-columns: 1fr;
     margin-top: 1rem;
     gap: 1rem;
   }
   aside { order: 2; }
   main { order: 1; }
   .navbar { padding: 1rem; }
-  #topGainersCard { 
-    position: static !important; 
-    max-height: none !important; 
+  #topGainersCard {
+    position: static !important;
+    max-height: none !important;
   }
   .top-gainers-wrapper {
     min-height: 400px;
@@ -241,10 +241,6 @@ tr.clickable:hover { background: var(--bg); }
   max-height: 713px;
 }
 
-/* Hide horizontal scroll if any */
-.top-gainers-wrapper {
-  overflow-x: hidden;
-}
 
 .error-state {
   display: none;
@@ -321,12 +317,31 @@ tr.clickable:hover { background: var(--bg); }
 .top-gainers-wrapper {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .top-gainers-wrapper table {
   width: 100%;
   border-collapse: separate;
   border-spacing: 0;
+  table-layout: fixed;
+}
+
+.top-gainers-wrapper th:nth-child(1),
+.top-gainers-wrapper td:nth-child(1) {
+  width: 2rem;
+}
+
+.top-gainers-wrapper th:nth-child(2),
+.top-gainers-wrapper td:nth-child(2) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.top-gainers-wrapper th:nth-child(3),
+.top-gainers-wrapper td:nth-child(3) {
+  width: 5rem;
 }
 
 .top-gainers-wrapper th {
@@ -347,6 +362,11 @@ tr.clickable:hover { background: var(--bg); }
   padding: 0.75rem 1rem;
   border-bottom: 1px solid var(--border);
   font-size: 0.875rem;
+}
+
+.top-gainers-wrapper td:last-child,
+.top-gainers-wrapper th:last-child {
+  padding-right: 0;
 }
 
 .top-gainers-wrapper tr:last-child td {
