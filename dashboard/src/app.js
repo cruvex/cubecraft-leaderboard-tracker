@@ -185,13 +185,13 @@ async function loadPlayerProfile(id) {
   // Reset fields
   el("displayIgn").innerText = "Loading...";
   el("displayUuid").innerText = id;
-  el("displayGain").innerText = "---";
+  el("displayGain7d").innerText = "---";
+  el("displayGain30d").innerText = "---";
   el("displayCurrentScore").innerText = "---";
 
   const selectedGame = games.find(g => g.id === Number(currentGameId));
-  const scoreType = selectedGame?.scoreType || "Score";
-  el("gainLabel").innerText = `${currentDays}d ${scoreType} Gain`;
-  el("scoreLabel").innerText = `Current ${scoreType}`;
+  const scoreType = selectedGame?.scoreType || "Wins";
+  el("scoreLabel").innerText = `Total ${scoreType}`;
 
   try {
     const scoreData = await apiFetch(`/player/${id}/scores`);
@@ -200,17 +200,15 @@ async function loadPlayerProfile(id) {
     el("displayUuid").innerText = formatUuid(scoreData.player);
     
     if (scoreData.rows?.length) {
-      const scores = scoreData.rows.map(r => r.score);
-      const minScore = Math.min(...scores);
-      const maxScore = Math.max(...scores);
-      const scoreGain = maxScore - minScore;
+      el("displayGain7d").innerText = scoreData.gain7d.toLocaleString();
+      el("displayGain30d").innerText = scoreData.gain30d.toLocaleString();
 
       const currentScore = scoreData.rows[scoreData.rows.length - 1].score;
-      el("displayGain").innerText = scoreGain.toLocaleString();
       el("displayCurrentScore").innerText = currentScore.toLocaleString();
       renderChart(scoreData.rows, scoreData.ign, scoreType);
     } else {
-      el("displayGain").innerText = "0";
+      el("displayGain7d").innerText = "0";
+      el("displayGain30d").innerText = "0";
       el("displayCurrentScore").innerText = "No data";
       if (chart) chart.destroy();
     }
@@ -282,7 +280,6 @@ async function init() {
       btn.classList.add("active");
 
       loadTopGainers();
-      if (currentPlayerId) loadPlayerProfile(currentPlayerId);
     };
 
     updateWarningBanner();

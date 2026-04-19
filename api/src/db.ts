@@ -114,7 +114,7 @@ export async function getPlayerScores(uuid: string, days = 30, gameId?: number) 
     FROM leaderboard_rows lr
     JOIN leaderboard_snapshots ls ON lr.snapshot_id = ls.id
     WHERE lr.player = ${uuid}
-      AND ls.timestamp >= NOW() - CAST(${days + " days"} AS INTERVAL)
+      AND ls.timestamp >= NOW() - CAST(${Math.max(days, 30) + " days"} AS INTERVAL)
       ${gameId != null ? Bun.sql`AND ls.game_id = ${gameId}` : Bun.sql``}
     ORDER BY ls.timestamp;
   `;
@@ -133,7 +133,21 @@ export async function getPlayerScores(uuid: string, days = 30, gameId?: number) 
     score: r.score == null ? 0 : Number(r.score),
   }));
 
-  return { player: uuid, ign, rows };
+  // Calculate 7d and 30d gains
+  const now = Date.now();
+  const msIn7Days = 7 * 24 * 60 * 60 * 1000;
+  const msIn30Days = 30 * 24 * 60 * 60 * 1000;
+
+  const rows7d = rows.filter(r => (now - new Date(r.timestamp).getTime()) <= msIn7Days);
+  const rows30d = rows.filter(r => (now - new Date(r.timestamp).getTime()) <= msIn30Days);
+
+  const gain7d = rows7d.length > 1 ? Math.max(...rows7d.map(r => r.score)) - Math.min(...rows7d.map(r => r.score)) : 0;
+  const gain30d = rows30d.length > 1 ? Math.max(...rows30d.map(r => r.score)) - Math.min(...rows30d.map(r => r.score)) : 0;
+
+  // Filter rows for chart based on requested days
+  const filteredRows = days === 0 ? rows : rows.filter(r => (now - new Date(r.timestamp).getTime()) <= (days * 24 * 60 * 60 * 1000));
+
+  return { player: uuid, ign, rows: filteredRows, gain7d, gain30d };
 }
 
 export async function getUuidByIgn(ign: string): Promise<string | null> {
