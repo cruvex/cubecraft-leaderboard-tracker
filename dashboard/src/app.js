@@ -1,10 +1,34 @@
+import {
+  Chart,
+  LineController,
+  LineElement,
+  LinearScale,
+  BarController,
+  BarElement,
+  CategoryScale,
+  PointElement,
+  Tooltip
+} from "chart.js";
+
+Chart.register(
+    LineController,
+    LineElement,
+    LinearScale,
+    BarController,
+    BarElement,
+    CategoryScale,
+    PointElement,
+    Tooltip
+);
+
 const apiBase = "/api";
 let chart = null;
 let leaderboardChart = null;
 let games = [];
 let currentGameId = 11;
 let currentDays = 30;
-let currentPlayerId = null;
+/** @type {{ id: string, data: Object[] } | undefined} */
+let currentPlayer = undefined;
 const enabledGames = ["team_eggwars", "solo_skywars"];
 
 const TRACKING_START_DATES = {
@@ -47,7 +71,6 @@ function formatUuid(uuid) {
 
 function renderTopGainers(data) {
   const container = el("topGainers");
-  container.innerHTML = "";
   
   if (!data?.length) {
     container.innerHTML = '<div class="text-muted centered-p" style="padding: 2rem;">No data available</div>';
@@ -89,7 +112,8 @@ function renderTopGainers(data) {
     tbody.appendChild(tr);
     i++;
   });
-  
+
+  container.innerHTML = "";
   container.appendChild(table);
 }
 
@@ -101,12 +125,18 @@ function renderChart(rows, ign, scoreType = "Score") {
   const maxTime = now;
   const minTime = now - (currentDays * 24 * 60 * 60 * 1000);
 
-  const chartData = rows.map(r => ({
-    x: new Date(r.timestamp).getTime(),
-    y: r.score
-  }));
+  const chartData = rows
+    .map(r => ({
+      x: new Date(r.timestamp).getTime(),
+      y: r.score
+    }))
+    .filter(d => d.x >= minTime);
 
   if (chart) chart.destroy();
+
+  if (!chartData.length) {
+    return;
+  }
 
   const minVal = Math.min(...chartData.map(d => d.y));
   const maxVal = Math.max(...chartData.map(d => d.y));
@@ -116,11 +146,10 @@ function renderChart(rows, ign, scoreType = "Score") {
     type: "line",
     data: {
       datasets: [{
-        label: `${scoreType} History`,
+        label: `${scoreType}`,
         data: chartData,
         borderColor: "#2563eb",
         backgroundColor: "rgba(37, 99, 235, 0.1)",
-        fill: true,
         tension: 0,
         pointRadius: 3,
         pointHoverRadius: 6,
@@ -181,12 +210,11 @@ function renderChart(rows, ign, scoreType = "Score") {
 async function loadPlayerProfile(id) {
   if (!id) return;
 
-  if (currentPlayerId === id) return;
+  if (currentPlayer && currentPlayer.id === id) return;
 
   // Update URL path
   const newPath = `/player/${id}`;
   window.history.replaceState({}, "", newPath);
-  currentPlayerId = id;
 
   el("emptyState").style.display = "none";
   el("errorState").style.display = "none";
@@ -206,6 +234,7 @@ async function loadPlayerProfile(id) {
 
   try {
     const scoreData = await apiFetch(`/player/${id}/scores`);
+    currentPlayer = { id, data: scoreData };
 
     el("displayIgn").innerText = scoreData.ign;
     el("displayUuid").innerText = formatUuid(scoreData.player);
@@ -248,7 +277,7 @@ function resetSearch() {
 async function init() {
   const pathname = window.location.pathname;
   if (pathname.startsWith("/player/")) {
-    currentPlayerId = decodeURIComponent(pathname.split("/").pop());
+    currentPlayer = { id: decodeURIComponent(pathname.split("/").pop()), data: null };
   }
   
   resetSearch()
@@ -273,11 +302,16 @@ async function init() {
 
     selector.onchange = (e) => {
       currentGameId = Number(e.target.value) || null;
+      if (currentPlayer) currentPlayer.data = null;
       updateWarningBanner();
       // Refresh data
       loadTopGainers();
       loadLeaderboard();
-      if (currentPlayerId) loadPlayerProfile(currentPlayerId);
+      if (currentPlayer) {
+        const savedId = currentPlayer.id;
+        currentPlayer = null;
+        loadPlayerProfile(savedId);
+      }
     };
 
     el("daysToggle").onclick = (e) => {
@@ -291,6 +325,11 @@ async function init() {
       btn.classList.add("active");
 
       loadTopGainers();
+      if (currentPlayer && currentPlayer.data) {
+        const selectedGame = games.find(g => g.id === Number(currentGameId));
+        const scoreType = selectedGame?.scoreType || "Wins";
+        renderChart(currentPlayer.data.rows, currentPlayer.data.ign, scoreType);
+      }
     };
 
     updateWarningBanner();
@@ -298,7 +337,7 @@ async function init() {
     await Promise.all([
       loadTopGainers(),
       loadLeaderboard(),
-      currentPlayerId ? loadPlayerProfile(currentPlayerId) : Promise.resolve(),
+      currentPlayer ? loadPlayerProfile(currentPlayer.id) : Promise.resolve(),
     ]);
   } catch (err) {
     console.error("Initialization failed", err);
