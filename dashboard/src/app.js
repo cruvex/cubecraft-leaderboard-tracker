@@ -150,7 +150,6 @@ function renderChart(rows, ign, scoreType = "Score") {
         label: `${scoreType}`,
         data: chartData,
         borderColor: "#2563eb",
-        backgroundColor: "rgba(37, 99, 235, 0.1)",
         tension: 0,
         pointRadius: 3,
         pointHoverRadius: 6,
@@ -171,6 +170,14 @@ function renderChart(rows, ign, scoreType = "Score") {
       plugins: {
         legend: { display: false },
         tooltip: {
+          backgroundColor: 'rgba(255, 255, 255, 0.9)',
+          titleColor: '#1e293b',
+          bodyColor: '#1e293b',
+          borderColor: '#e2e8f0',
+          borderWidth: 1,
+          padding: 12,
+          boxPadding: 4,
+          usePointStyle: true,
           mode: 'index',
           intersect: false,
           callbacks: {
@@ -189,7 +196,11 @@ function renderChart(rows, ign, scoreType = "Score") {
           grid: { display: false },
           ticks: { 
             maxRotation: 0, 
-            autoSkip: true, 
+            autoSkip: true,
+            color: '#64748b',
+            font: {
+              size: 11
+            },
             stepSize: 24 * 60 * 60 * 1000,
             callback: (val) => new Date(val).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
           }
@@ -200,6 +211,10 @@ function renderChart(rows, ign, scoreType = "Score") {
           suggestedMax: maxVal + padding,
           ticks: {
             precision: 0,
+            color: '#64748b',
+            font: {
+              size: 11
+            },
             callback: (val) => val.toLocaleString()
           }
         }
@@ -420,9 +435,12 @@ function renderLeaderboardChart(data) {
       datasets: [{
         label: scoreType,
         data: rows.map(d => d.score),
-        backgroundColor: "rgba(37, 99, 235, 0.7)",
+        backgroundColor: "#709cfa",
         borderColor: "#2563eb",
-        borderWidth: 1,
+        borderWidth: 0,
+        borderRadius: 4,
+        borderSkipped: false,
+        hoverBackgroundColor: "#2563eb",
         xAxisID: 'xBottom'
       }]
     },
@@ -433,6 +451,14 @@ function renderLeaderboardChart(data) {
       plugins: {
         legend: { display: false },
         tooltip: {
+          backgroundColor: 'rgba(255, 255, 255, 0.9)',
+          titleColor: '#1e293b',
+          bodyColor: '#1e293b',
+          borderColor: '#e2e8f0',
+          borderWidth: 1,
+          padding: 12,
+          boxPadding: 4,
+          usePointStyle: true,
           callbacks: {
             label: (context) => {
               return `${scoreType}: ${context.parsed.x.toLocaleString()}`;
@@ -446,7 +472,13 @@ function renderLeaderboardChart(data) {
           position: 'top',
           max,
           beginAtZero: true,
+          grid: {
+            color: 'rgba(226, 232, 240, 0.6)',
+            drawBorder: false
+          },
           ticks: {
+            color: '#64748b',
+            font: { size: 11 },
             callback: (val) => val.toLocaleString()
           }
         },
@@ -459,15 +491,25 @@ function renderLeaderboardChart(data) {
             drawOnChartArea: false
           },
           ticks: {
+            color: '#64748b',
+            font: { size: 11 },
             callback: (val) => val.toLocaleString()
           }
         },
         y: {
+          grid: {
+            display: false,
+            drawBorder: false
+          },
           ticks: {
             autoSkip: false,
             padding: 10,
             crossAlign: 'far',
-            font: { size: 12 }
+            color: '#1e293b',
+            font: { 
+              size: 12,
+              weight: '500'
+            }
           }
         }
       },
