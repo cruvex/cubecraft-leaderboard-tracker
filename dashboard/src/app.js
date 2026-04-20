@@ -106,6 +106,7 @@ function renderTopGainers(data) {
       </td>
     `;
     tr.onclick = () => {
+      if (currentPlayer && currentPlayer.id === row.player) return;
       loadPlayerProfile(row.player);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     };
@@ -210,8 +211,6 @@ function renderChart(rows, ign, scoreType = "Score") {
 async function loadPlayerProfile(id) {
   if (!id) return;
 
-  if (currentPlayer && currentPlayer.id === id) return;
-
   // Update URL path
   const newPath = `/player/${id}`;
   window.history.replaceState({}, "", newPath);
@@ -276,6 +275,7 @@ function resetSearch() {
 
 async function init() {
   const pathname = window.location.pathname;
+  console.log("Pathname:", pathname);
   if (pathname.startsWith("/player/")) {
     currentPlayer = { id: decodeURIComponent(pathname.split("/").pop()), data: null };
   }
