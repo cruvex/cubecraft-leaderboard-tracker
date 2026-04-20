@@ -16,12 +16,21 @@ const el = (id) => document.getElementById(id);
 
 async function apiFetch(endpoint) {
   const isInternal = endpoint.startsWith("/");
-  const separator = endpoint.includes("?") ? "&" : "?";
-  let url = (isInternal && currentGameId) ? `${endpoint}${separator}gameId=${currentGameId}` : endpoint;
+  let url = endpoint;
   
-  if (isInternal) {
-    const daySeparator = url.includes("?") ? "&" : "?";
-    url = `${url}${daySeparator}days=${currentDays}`;
+  if (isInternal && currentGameId) {
+    if (url.startsWith("/top-gainers") || url.startsWith("/leaderboard")) {
+      url = `/games/${currentGameId}${url}`;
+    } else if (url.startsWith("/player/")) {
+      const parts = url.split("/");
+      // parts[0] is "", parts[1] is "player", parts[2] is ":id", parts[3] is "scores"
+      url = `/games/${currentGameId}/player/${parts[2]}`;
+    }
+
+    if (url !== "/games" && !url.includes("leaderboard") && !url.includes("?days=") && !url.includes("player")) {
+      const separator = url.includes("?") ? "&" : "?";
+      url = `${url}${separator}days=${currentDays}`;
+    }
   }
 
   const res = await fetch(isInternal ? `${apiBase}${url}` : url);
@@ -171,6 +180,8 @@ function renderChart(rows, ign, scoreType = "Score") {
 
 async function loadPlayerProfile(id) {
   if (!id) return;
+
+  if (currentPlayerId === id) return;
 
   // Update URL path
   const newPath = `/player/${id}`;

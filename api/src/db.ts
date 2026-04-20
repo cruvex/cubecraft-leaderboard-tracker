@@ -1,34 +1,7 @@
 // db.ts - Database query logic for the dashboard
 // Separation of concerns: keep SQL logic here
-import { z } from "zod";
 
-const cubepanionBaseUrl = "https://cubepanion.ameliah.art/api/v2";
-
-const GameSchema = z.object({
-  id: z.number(),
-  name: z.string(),
-  displayName: z.string(),
-  aliases: z.array(z.string()),
-  active: z.boolean(),
-  scoreType: z.string(),
-  shouldTrack: z.boolean(),
-  hasPreLobby: z.boolean(),
-});
-
-type Game = z.infer<typeof GameSchema>;
-
-export async function fetchGames(): Promise<Game[]> {
-  const res = await fetch(`${cubepanionBaseUrl}/Games`);
-  const json = await res.json();
-  const parsed = z.array(GameSchema).safeParse(json);
-  if (!parsed.success) {
-    console.error("Invalid response from Cubepanion Games API:", parsed.error);
-    return [];
-  }
-  return parsed.data;
-}
-
-export async function getTopGainers(days = 30, limit = 50, gameId?: number) {
+export async function getTopGainers(days = 30, limit = 50, gameId: number) {
   const res = await Bun.sql`
     WITH scores AS (
       SELECT
@@ -37,7 +10,7 @@ export async function getTopGainers(days = 30, limit = 50, gameId?: number) {
       FROM leaderboard_rows lr
       JOIN leaderboard_snapshots ls ON lr.snapshot_id = ls.id
       WHERE ls.timestamp >= NOW() - CAST(${days + " days"} AS INTERVAL)
-        ${gameId != null ? Bun.sql`AND ls.game_id = ${gameId}` : Bun.sql``}
+        AND ls.game_id = ${gameId}
       GROUP BY lr.player
     ),
     player_igns AS (
@@ -65,12 +38,12 @@ export async function getTopGainers(days = 30, limit = 50, gameId?: number) {
   }));
 }
 
-export async function getLeaderboard(gameId?: number, limit?: number) {
+export async function getLeaderboard(gameId: string) {
   const res = await Bun.sql`
     WITH latest_snapshot AS (
         SELECT id, timestamp FROM leaderboard_snapshots
         WHERE 1=1
-        ${gameId != null ? Bun.sql`AND game_id = ${gameId}` : Bun.sql``}
+        AND game_id = ${gameId}
         ORDER BY timestamp DESC
         LIMIT 1
     ),
@@ -90,7 +63,6 @@ export async function getLeaderboard(gameId?: number, limit?: number) {
     JOIN latest_snapshot ls ON lr.snapshot_id = ls.id
     LEFT JOIN player_igns pi ON lr.player::uuid = pi.player_uuid
     ORDER BY lr.score DESC
-    ${limit != null ? Bun.sql`LIMIT ${limit}` : Bun.sql``}
   `;
 
   if (!res || res.length === 0) return { rows: [], timestamp: null };
@@ -108,14 +80,14 @@ export async function getLeaderboard(gameId?: number, limit?: number) {
 }
 
 
-export async function getPlayerScores(uuid: string, days = 30, gameId?: number) {
+export async function getPlayerScores(uuid: string, days = 30, gameId: number) {
   const scores = await Bun.sql`
     SELECT ls.timestamp, lr.score
     FROM leaderboard_rows lr
     JOIN leaderboard_snapshots ls ON lr.snapshot_id = ls.id
     WHERE lr.player = ${uuid}
       AND ls.timestamp >= NOW() - CAST(${Math.max(days, 30) + " days"} AS INTERVAL)
-      ${gameId != null ? Bun.sql`AND ls.game_id = ${gameId}` : Bun.sql``}
+      AND ls.game_id = ${gameId}
     ORDER BY ls.timestamp;
   `;
 
@@ -160,4 +132,14 @@ export async function getUuidByIgn(ign: string): Promise<string | null> {
   `;
   if (!res || res.length === 0) return null;
   return res[0].player_uuid;
+}
+
+export async function checkUuidExists(uuid: string): Promise<boolean> {
+  const res = await Bun.sql`
+    SELECT 1
+    FROM ign_history
+    WHERE player_uuid = ${uuid}
+    LIMIT 1
+  `;
+  return !!(res && res.length > 0);
 }

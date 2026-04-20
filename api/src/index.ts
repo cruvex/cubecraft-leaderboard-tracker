@@ -1,4 +1,5 @@
-import * as db from "./db";
+import { getUuidByIgn, getTopGainers, getPlayerScores, getLeaderboard } from "./db";
+import { fetchGames } from "./cubepanion";
 
 const PORT = process.env.PORT ? Number(process.env.PORT) : 4000;
 
@@ -16,10 +17,43 @@ function jsonResponse(obj: unknown, status = 200) {
 async function resolvePlayerId(id: string): Promise<string> {
     const isUuid = id.length >= 32 && (id.includes("-") || id.length === 32);
     if (!isUuid) {
-        const resolvedUuid = await db.getUuidByIgn(id);
+        const resolvedUuid = await getUuidByIgn(id);
         if (resolvedUuid) return resolvedUuid;
     }
     return id;
+}
+
+// Route Handlers
+async function handleTopGainers(req: Request, params: { gameId: string }) {
+    const url = new URL(req.url);
+    const days = Number(url.searchParams.get("days") || 30);
+    const gameId = Number(params.gameId);
+    if (isNaN(gameId)) return jsonResponse({ error: "Invalid gameId" }, 400);
+    const out = await getTopGainers(days, 50, gameId);
+    return jsonResponse(out);
+}
+
+async function handlePlayerScores(req: Request, params: { gameId: string, id: string }) {
+    const id = await resolvePlayerId(params.id);
+    if (!id) {
+        return jsonResponse({ error: "Player not found" }, 404);
+    }
+    const url = new URL(req.url);
+    const days = Number(url.searchParams.get("days") || 30);
+    const gameId = Number(params.gameId);
+    if (isNaN(gameId)) return jsonResponse({ error: "Invalid gameId" }, 400);
+    const data = await getPlayerScores(id, days, gameId);
+    return jsonResponse(data);
+}
+
+async function handleGames() {
+    const games = await fetchGames();
+    return jsonResponse(games);
+}
+
+async function handleLeaderboard (req, params: { gameId: string })  {
+    const out = await getLeaderboard(params.gameId);
+    return jsonResponse(out);
 }
 
 // Main server
@@ -27,36 +61,12 @@ Bun.serve({
     port: PORT,
     hostname: "0.0.0.0",
     routes: {
-        "/api/top-gainers": async (req) => {
-            const url = new URL(req.url);
-            const days = Number(url.searchParams.get("days") || 30);
-            const gameId = url.searchParams.get("gameId") ? Number(url.searchParams.get("gameId")) : undefined;
-            const out = await db.getTopGainers(days, 50, gameId);
-            return jsonResponse(out);
-        },
-        "/api/leaderboard": async (req) => {
-            const url = new URL(req.url);
-            const gameId = url.searchParams.get("gameId") ? Number(url.searchParams.get("gameId")) : undefined;
-            const limitStr = url.searchParams.get("limit");
-            const limit = limitStr ? Number(limitStr) : undefined;
-            const out = await db.getLeaderboard(gameId, limit);
-            return jsonResponse(out);
-        },
-        "/api/player/:id/scores": async (req) => {
-            const id = await resolvePlayerId(req.params.id);
-            const url = new URL(req.url);
-            const days = Number(url.searchParams.get("days") || 30);
-            const gameId = url.searchParams.get("gameId") ? Number(url.searchParams.get("gameId")) : undefined;
-            const data = await db.getPlayerScores(id, days, gameId);
-            return jsonResponse(data);
-        },
-        "/api/games": async () => {
-            const games = await db.fetchGames();
-            return jsonResponse(games);
-        }
+        "/api/games/:gameId/top-gainers": (req) => handleTopGainers(req, req.params as { gameId: string }),
+        "/api/games/:gameId/player/:id": (req) => handlePlayerScores(req, req.params as { gameId: string, id: string }),
+        "/api/games": handleGames,
+        "/api/games/:gameId/leaderboard": (req) => handleLeaderboard(req, req.params as { gameId: string }),
     },
     async fetch(req: Request) {
-        // If we reach here, no static or api route matched
         return new Response("Not found", { status: 404 });
     },
 });
