@@ -10,6 +10,13 @@
   --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
 }
 
+@font-face {
+  font-family: 'Minecraftia';
+  src: url('/fonts/minecraft.woff2') format('woff2');
+  font-weight: normal;
+  font-style: normal;
+}
+
 * { box-sizing: border-box; }
 
 body {
@@ -263,7 +270,10 @@ tr.clickable:hover { background: var(--bg); }
   margin-bottom: 1.5rem;
 }
 
-.player-name { font-size: 1.5rem; font-weight: 700; }
+.player-name {
+  font-family: 'Minecraftia', 'sans-serif';
+  font-size: 1.5rem; font-weight: 700;
+}
 .player-uuid { font-family: monospace; color: var(--text-muted); font-size: 0.875rem; }
 
 .stats-grid {
