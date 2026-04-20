@@ -106,6 +106,35 @@ body {
   color: #f59e0b;
 }
 
+.info-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 1.5px solid var(--text-muted);
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 800;
+  font-family: serif;
+  margin-left: 4px;
+  vertical-align: middle;
+  transition: all 0.2s;
+}
+
+#leaderboardTitle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+
+.title-metadata {
+  display: flex;
+  align-items: center;
+}
+
 @media (max-width: 900px) {
   .container {
     grid-template-columns: 1fr;

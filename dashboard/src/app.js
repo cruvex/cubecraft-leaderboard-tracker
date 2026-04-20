@@ -398,10 +398,13 @@ function renderLeaderboardChart(data) {
   const scoreType = selectedGame?.scoreType || "Score";
   const gameDisplayName = selectedGame?.displayName || "Full";
   
-  let titleText = `${gameDisplayName} Leaderboard`;
+  let titleText = `<span class="title-main">${gameDisplayName} Leaderboard</span>`;
   if (data.timestamp) {
     const date = new Date(data.timestamp);
-    titleText += ` <span class="text-muted" style="font-size: 0.8rem; font-weight: normal; margin-left: 0.5rem;">${date.toLocaleString()}</span>`;
+    titleText += `<div class="title-metadata">`;
+    titleText += `<span class="text-muted" style="font-size: 0.8rem; font-weight: normal; margin-left: 0.5rem;">${date.toLocaleString()}</span>`;
+    titleText += `<span class="info-icon" title="This is the last submitted leaderboard at this timestamp">i</span>`;
+    titleText += `</div>`;
   }
   el("leaderboardTitle").innerHTML = titleText;
 
