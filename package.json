@@ -9,7 +9,8 @@
   ],
   "scripts": {
     "build": "vite build dashboard",
-    "dev": "vite dashboard"
+    "dev:dashboard": "vite dashboard",
+    "dev:api": "bun api/src/index.ts"
   },
   "devDependencies": {
     "@types/bun": "latest",
