@@ -1,6 +1,3 @@
-// db.ts - Database query logic for the dashboard
-// Separation of concerns: keep SQL logic here
-
 export async function getTopGainers(days = 30, limit = 50, gameId: number) {
   const res = await Bun.sql`
     WITH scores AS (
