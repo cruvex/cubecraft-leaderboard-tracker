@@ -118,6 +118,9 @@ function renderTopGainers(data) {
   container.appendChild(table);
 }
 
+function getStyle(name) {
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+}
 
 function renderChart(rows, ign, scoreType = "Score") {
   const ctx = el("scoreChart").getContext("2d");
@@ -143,17 +146,24 @@ function renderChart(rows, ign, scoreType = "Score") {
   const maxVal = Math.max(...chartData.map(d => d.y));
   const padding = maxVal === minVal ? 1 : Math.max(1, Math.ceil((maxVal - minVal) * 0.1));
 
+  const primary = getStyle('--primary');
+  const textMuted = getStyle('--text-muted');
+  const border = getStyle('--border');
+  const text = getStyle('--text');
+  const cardBg = getStyle('--card-bg');
+
   chart = new Chart(ctx, {
     type: "line",
     data: {
       datasets: [{
         label: `${scoreType}`,
         data: chartData,
-        borderColor: "#2563eb",
+        borderColor: primary,
+        backgroundColor: `${primary}1a`,
         tension: 0,
         pointRadius: 3,
         pointHoverRadius: 6,
-        pointBackgroundColor: "#2563eb",
+        pointBackgroundColor: primary,
         clip: false,
         borderWidth: 3
       }]
@@ -170,10 +180,10 @@ function renderChart(rows, ign, scoreType = "Score") {
       plugins: {
         legend: { display: false },
         tooltip: {
-          backgroundColor: 'rgba(255, 255, 255, 0.9)',
-          titleColor: '#1e293b',
-          bodyColor: '#1e293b',
-          borderColor: '#e2e8f0',
+          backgroundColor: cardBg,
+          titleColor: text,
+          bodyColor: text,
+          borderColor: border,
           borderWidth: 1,
           padding: 12,
           boxPadding: 4,
@@ -196,12 +206,9 @@ function renderChart(rows, ign, scoreType = "Score") {
           grid: { display: false },
           ticks: { 
             maxRotation: 0, 
-            autoSkip: true,
-            color: '#64748b',
-            font: {
-              size: 11
-            },
+            autoSkip: true, 
             stepSize: 24 * 60 * 60 * 1000,
+            color: textMuted,
             callback: (val) => new Date(val).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
           }
         },
@@ -209,12 +216,12 @@ function renderChart(rows, ign, scoreType = "Score") {
           beginAtZero: false,
           suggestedMin: minVal - padding,
           suggestedMax: maxVal + padding,
+          grid: {
+            color: border
+          },
           ticks: {
             precision: 0,
-            color: '#64748b',
-            font: {
-              size: 11
-            },
+            color: textMuted,
             callback: (val) => val.toLocaleString()
           }
         }
@@ -226,7 +233,6 @@ function renderChart(rows, ign, scoreType = "Score") {
 async function loadPlayerProfile(id) {
   if (!id) return;
 
-  // Update URL path
   const newPath = `/player/${id}`;
   window.history.replaceState({}, "", newPath);
 
@@ -234,8 +240,7 @@ async function loadPlayerProfile(id) {
   el("errorState").style.display = "none";
   el("playerProfile").style.display = "block";
   el("chartLoading").style.display = "flex";
-  
-  // Reset fields
+
   el("displayIgn").innerText = "Loading...";
   el("displayUuid").innerText = id;
   el("displayGain7d").innerText = "---";
@@ -279,7 +284,6 @@ async function loadPlayerProfile(id) {
 }
 
 function resetSearch() {
-  // Clear URL path
   window.history.replaceState({}, "", "/");
 
   el("errorState").style.display = "none";
@@ -297,7 +301,6 @@ async function init() {
   
   resetSearch()
   try {
-    // Sync currentDays with the initial value of the selector
     const activeBtn = el("daysToggle").querySelector(".toggle-btn.active");
     if (activeBtn) {
       currentDays = Number(activeBtn.dataset.days);
@@ -319,7 +322,6 @@ async function init() {
       currentGameId = Number(e.target.value) || null;
       if (currentPlayer) currentPlayer.data = null;
       updateWarningBanner();
-      // Refresh data
       loadTopGainers();
       loadLeaderboard();
       if (currentPlayer) {
@@ -336,8 +338,7 @@ async function init() {
       if (currentDays === Number(btn.dataset.days)) return;
 
       currentDays = Number(btn.dataset.days);
-      
-      // Update UI
+
       el("daysToggle").querySelectorAll(".toggle-btn").forEach(b => b.classList.remove("active"));
       btn.classList.add("active");
 
@@ -371,6 +372,60 @@ async function init() {
       if (query) loadPlayerProfile(query);
     }
   };
+
+  // Listen for theme changes to update chart colors
+  const observer = new MutationObserver((mutations) => {
+    mutations.forEach((mutation) => {
+      if (mutation.attributeName === "theme") {
+        updateAllChartsTheme();
+      }
+    });
+  });
+  observer.observe(document.documentElement, { attributes: true });
+}
+
+function updateAllChartsTheme() {
+  const primary = getStyle('--primary');
+  const textMuted = getStyle('--text-muted');
+  const border = getStyle('--border');
+  const text = getStyle('--text');
+  const cardBg = getStyle('--card-bg');
+
+  if (chart) {
+    chart.data.datasets[0].borderColor = primary;
+    chart.data.datasets[0].backgroundColor = `${primary}1a`;
+    chart.data.datasets[0].pointBackgroundColor = primary;
+
+    chart.options.scales.x.ticks.color = textMuted;
+    chart.options.scales.y.ticks.color = textMuted;
+    chart.options.scales.y.grid.color = border;
+
+    chart.options.plugins.tooltip.backgroundColor = cardBg;
+    chart.options.plugins.tooltip.titleColor = text;
+    chart.options.plugins.tooltip.bodyColor = text;
+    chart.options.plugins.tooltip.borderColor = border;
+
+    chart.update('none');
+  }
+
+  if (leaderboardChart) {
+    leaderboardChart.data.datasets[0].borderColor = primary;
+    leaderboardChart.data.datasets[0].backgroundColor = `${primary}b3`;
+
+    leaderboardChart.options.scales.xTop.grid.color = border;
+    leaderboardChart.options.scales.xTop.ticks.color = textMuted;
+    leaderboardChart.options.scales.xBottom.grid.color = border;
+    leaderboardChart.options.scales.xBottom.ticks.color = textMuted;
+    leaderboardChart.options.scales.y.grid.color = border;
+    leaderboardChart.options.scales.y.ticks.color = textMuted;
+
+    leaderboardChart.options.plugins.tooltip.backgroundColor = cardBg;
+    leaderboardChart.options.plugins.tooltip.titleColor = text;
+    leaderboardChart.options.plugins.tooltip.bodyColor = text;
+    leaderboardChart.options.plugins.tooltip.borderColor = border;
+
+    leaderboardChart.update('none');
+  }
 }
 
 function updateWarningBanner() {
@@ -430,6 +485,12 @@ function renderLeaderboardChart(data) {
   const values = rows.map(d => d.score);
   const max = Math.max(...values);
 
+  const primary = getStyle('--primary');
+  const textMuted = getStyle('--text-muted');
+  const border = getStyle('--border');
+  const text = getStyle('--text');
+  const cardBg = getStyle('--card-bg');
+
   leaderboardChart = new Chart(ctx, {
     type: 'bar',
     data: {
@@ -437,11 +498,10 @@ function renderLeaderboardChart(data) {
       datasets: [{
         label: scoreType,
         data: rows.map(d => d.score),
-        backgroundColor: "#709cfa",
-        borderColor: "#2563eb",
+        backgroundColor: `${primary}b3`,
+        borderColor: primary,
         borderWidth: 0,
-        borderRadius: 4,
-        borderSkipped: false,
+        borderRadius: 5,
         hoverBackgroundColor: "#2563eb",
         xAxisID: 'xBottom'
       }]
@@ -453,10 +513,10 @@ function renderLeaderboardChart(data) {
       plugins: {
         legend: { display: false },
         tooltip: {
-          backgroundColor: 'rgba(255, 255, 255, 0.9)',
-          titleColor: '#1e293b',
-          bodyColor: '#1e293b',
-          borderColor: '#e2e8f0',
+          backgroundColor: cardBg,
+          titleColor: text,
+          bodyColor: text,
+          borderColor: border,
           borderWidth: 1,
           padding: 12,
           boxPadding: 4,
@@ -475,12 +535,10 @@ function renderLeaderboardChart(data) {
           max,
           beginAtZero: true,
           grid: {
-            color: 'rgba(226, 232, 240, 0.6)',
-            drawBorder: false
+            color: border
           },
           ticks: {
-            color: '#64748b',
-            font: { size: 11 },
+            color: textMuted,
             callback: (val) => val.toLocaleString()
           }
         },
@@ -490,11 +548,11 @@ function renderLeaderboardChart(data) {
           max,
           beginAtZero: true,
           grid: {
-            drawOnChartArea: false
+            drawOnChartArea: false,
+            color: border
           },
           ticks: {
-            color: '#64748b',
-            font: { size: 11 },
+            color: textMuted,
             callback: (val) => val.toLocaleString()
           }
         },
@@ -507,11 +565,8 @@ function renderLeaderboardChart(data) {
             autoSkip: false,
             padding: 10,
             crossAlign: 'far',
-            color: '#1e293b',
-            font: { 
-              size: 12,
-              weight: '500'
-            }
+            color: textMuted,
+            font: { size: 12 }
           }
         }
       },

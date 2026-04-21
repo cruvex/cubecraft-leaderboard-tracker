@@ -1,18 +1,41 @@
 <!doctype html>
 <html lang="en">
   <head>
+    <title>Leaderboard Dashboard</title>
+    <script id="theme-script">
+      // Set the theme based on the user's preference
+      (() => {
+        const preferredUserTheme = localStorage.getItem('preferred-theme') || 'auto';
+        const preferredSystemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        const theme = preferredUserTheme === 'auto' ? preferredSystemTheme : preferredUserTheme;
+        console.log(`Setting theme to ${theme}`);
+        
+        // Temporarily disable transitions to avoid a flash/transition on initial load
+        document.documentElement.classList.add('no-transition');
+        document.documentElement.setAttribute('theme', theme);
+        
+        // Re-enable transitions after the initial theme is set
+        requestAnimationFrame(() => {
+          document.documentElement.classList.remove('no-transition');
+        });
+      })();
+    </script>
+    <script type="module" id="load-modules-script">
+      // Eagerly load all modules - This is to avoid having to import custom elements everywhere - https://vitejs.dev/guide/features.html#glob-import
+      import.meta.glob('./src/**/*.js', { eager: true });
+    </script>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>Leaderboard Dashboard</title>
     <link rel="stylesheet" href="src/style.css" />
     <link rel="icon" type="image/x-icon" href="/favicon.ico">
   </head>
   <body>
     <nav class="navbar">
-      <h1>Leaderboard Tracker</h1>
+      <h1>CubeCraft Leaderboard Tracker</h1>
       <div class="nav-controls">
         <select id="gameSelector">
         </select>
+        <theme-toggle></theme-toggle>
       </div>
     </nav>
 

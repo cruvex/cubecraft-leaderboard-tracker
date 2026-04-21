@@ -8,6 +8,37 @@
   --border: #e2e8f0;
   --radius: 12px;
   --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --warning-bg: #fff7ed;
+  --warning-border: #f59e0b;
+  --warning-text: #92400e;
+  --success-bg: #b0ffce;
+  --success-text: #0b3e1e;
+  --buton-bg: #53a8ff;
+  --button-text: var(--text);
+  --button-hover: #2493ff;
+}
+
+[theme="dark"] {
+  --primary: #60a5fa;
+  --primary-hover: #93c5fd;
+  --bg: #0f172a;
+  --card-bg: #1e293b;
+  --text: #f1f5f9;
+  --text-muted: #94a3b8;
+  --border: #334155;
+  --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.3), 0 2px 4px -2px rgb(0 0 0 / 0.3);
+  --warning-bg: #451a03;
+  --warning-border: #b45309;
+  --warning-text: #fed7aa;
+  --success-bg: #43ff8c;
+  --success-text: #000000;
+  --buton-bg: #2563eb;
+  --button-hover: #1d4ed8;
+  color-scheme: dark;
+}
+
+#gameSelector {
+  color-scheme: light;
 }
 
 @font-face {
@@ -17,7 +48,14 @@
   font-style: normal;
 }
 
-* { box-sizing: border-box; }
+.no-transition, .no-transition * {
+  transition: none !important;
+}
+
+* { 
+  box-sizing: border-box; 
+  transition: color 0.2s ease-out, background-color 0.2s ease-in, border-color 0.2s ease-in, box-shadow 0.2s ease-in;
+}
 
 body {
   margin: 0;
@@ -67,7 +105,6 @@ body {
   background-repeat: no-repeat;
   background-position: right 0.75rem top 50%;
   background-size: 0.65rem auto;
-  transition: border-color 0.2s;
 }
 
 #gameSelector:hover {
@@ -87,9 +124,9 @@ body {
   grid-column: 1 / -1;
   padding: 0.75rem 1rem;
   border-radius: var(--radius);
-  background-color: #fff7ed; /* soft amber */
-  border: 1px solid #f59e0b; /* amber border */
-  color: #92400e; /* readable dark amber text */
+  background-color: var(--warning-bg);
+  border: 1px solid var(--warning-border);
+  color: var(--warning-text);
 }
 
 .warning-banner-content {
@@ -102,7 +139,7 @@ body {
 }
 
 .warning-banner-content svg {
-  color: #f59e0b;
+  color: var(--warning-border);
 }
 
 .info-icon {
@@ -210,7 +247,8 @@ input[type="text"] {
   border-radius: 8px;
   font-size: 0.875rem;
   outline: none;
-  transition: border-color 0.2s;
+  background-color: var(--card-bg);
+  color: var(--text);
 }
 
 input[type="text"]:focus {
@@ -224,12 +262,11 @@ button {
   border: none;
   border-radius: 8px;
   cursor: pointer;
-  transition: all 0.2s;
-  background: var(--primary);
-  color: white;
+  background: var(--buton-bg);
+  color: var(--button-text);
 }
 
-button:hover { background: var(--primary-hover); }
+button:hover { background: var(--button-hover); }
 button.secondary { background: var(--bg); color: var(--text); border: 1px solid var(--border); }
 button.secondary:hover { background: var(--border); }
 button:disabled { opacity: 0.5; cursor: not-allowed; }
@@ -263,8 +300,8 @@ tr.clickable:hover { background: var(--bg); }
   border-radius: 6px;
   font-size: 0.75rem;
   font-weight: 600;
-  background: #dcfce7;
-  color: #166534;
+  background: var(--success-bg);
+  color: var(--success-text);
 }
 
 #chartContainer {
@@ -323,8 +360,8 @@ tr.clickable:hover { background: var(--bg); }
 
 .toggle-group {
   display: flex;
-  background: #f1f5f9;
-  padding: 3px;
+  background: var(--bg);
+  padding: 4px;
   border-radius: 9px;
   border: 1px solid var(--border);
 }
@@ -338,11 +375,11 @@ tr.clickable:hover { background: var(--bg); }
   color: var(--text-muted);
   cursor: pointer;
   border-radius: 6px;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  /*transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);*/
 }
 
 .toggle-btn:hover:not(.active) {
-  background: #e2e8f0;
+  background: var(--border);
   color: var(--text);
 }
 
@@ -357,6 +394,10 @@ tr.clickable:hover { background: var(--bg); }
   overflow-y: auto;
   overflow-x: hidden;
   padding-right: 0.5rem;
+}
+
+[theme="dark"] .top-gainers-wrapper {
+  scrollbar-color: var(--border) transparent;
 }
 
 .top-gainers-wrapper table {
@@ -419,7 +460,8 @@ tr.clickable:hover { background: var(--bg); }
 .loading-overlay {
   position: absolute;
   inset: 0;
-  background: rgba(255,255,255,0.7);
+  background: var(--card-bg);
+  opacity: 0.8;
   display: flex;
   align-items: center;
   justify-content: center;
