@@ -13,9 +13,9 @@
   --warning-text: #92400e;
   --success-bg: #b0ffce;
   --success-text: #0b3e1e;
-  --buton-bg: #53a8ff;
+  --buton-bg: #70bbff;
   --button-text: var(--text);
-  --button-hover: #2493ff;
+  --button-hover: #48aaff;
 }
 
 [theme="dark"] {
