@@ -83,7 +83,7 @@ function renderTopGainers(data) {
       <tr>
         <th class="text-center">#</th>
         <th class="text-center">Player</th>
-        <th class="text-center">Gain</th>
+        <th class="text-center">Wins</th>
       </tr>
     </thead>
     <tbody></tbody>
@@ -271,7 +271,8 @@ async function loadPlayerProfile(id) {
     el("playerProfile").style.display = "none";
     el("errorState").style.display = "block";
     el("errorTitle").innerText = "Player Not Found";
-    el("errorMessage").innerText = `We couldn't find data for "${id}". Check the name or UUID and try again.`;
+    const currentGame = games.find(g => g.id === Number(currentGameId));
+    el("errorMessage").innerText = `Player '${id}' is not on the ${currentGame.displayName} leaderboard.`;
   } finally {
     el("chartLoading").style.display = "none";
   }
@@ -290,7 +291,6 @@ function resetSearch() {
 
 async function init() {
   const pathname = window.location.pathname;
-  console.log("Pathname:", pathname);
   if (pathname.startsWith("/player/")) {
     currentPlayer = { id: decodeURIComponent(pathname.split("/").pop()), data: null };
   }
@@ -332,7 +332,9 @@ async function init() {
     el("daysToggle").onclick = (e) => {
       const btn = e.target.closest(".toggle-btn");
       if (!btn) return;
-      
+
+      if (currentDays === Number(btn.dataset.days)) return;
+
       currentDays = Number(btn.dataset.days);
       
       // Update UI
