@@ -392,10 +392,6 @@ function updateAllChartsTheme() {
   const cardBg = getStyle('--card-bg');
 
   if (chart) {
-    chart.data.datasets[0].borderColor = primary;
-    chart.data.datasets[0].backgroundColor = `${primary}1a`;
-    chart.data.datasets[0].pointBackgroundColor = primary;
-
     chart.options.scales.x.ticks.color = textMuted;
     chart.options.scales.y.ticks.color = textMuted;
     chart.options.scales.y.grid.color = border;
