@@ -86,6 +86,8 @@ export async function getLeaderboard(gameId: string, compareDays: number = 30) {
   const currentRows = (allRows as any[]).filter(r => r.current_score != null);
   const departedRows = (allRows as any[]).filter(r => r.current_score == null);
 
+  console.log(departedRows);
+
   const rows = currentRows.map((r, i) => {
     const currentRank = i + 1;
     const pastRank: number | null = r.past_rank ? Number(r.past_rank) : null;
@@ -171,4 +173,14 @@ export async function getUuidByIgn(ign: string): Promise<string | null> {
   `;
   if (!res || res.length === 0) return null;
   return res[0].player_uuid;
+}
+
+export async function checkUuidExists(uuid: string): Promise<boolean> {
+  const res = await Bun.sql`
+    SELECT 1
+    FROM ign_history
+    WHERE player_uuid = ${uuid}
+    LIMIT 1
+  `;
+  return !!(res && res.length > 0);
 }
