@@ -9,11 +9,11 @@
         const preferredSystemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
         const theme = preferredUserTheme === 'auto' ? preferredSystemTheme : preferredUserTheme;
         console.log(`Setting theme to ${theme}`);
-        
+
         // Temporarily disable transitions to avoid a flash/transition on initial load
         document.documentElement.classList.add('no-transition');
         document.documentElement.setAttribute('theme', theme);
-        
+
         // Re-enable transitions after the initial theme is set
         requestAnimationFrame(() => {
           document.documentElement.classList.remove('no-transition');
@@ -68,7 +68,7 @@
             <input id="playerSearch" type="text" placeholder="Enter Player IGN or UUID..." />
             <button id="loadPlayerBtn">View Stats</button>
           </div>
-          
+
           <div id="playerProfile" style="display: none;">
             <div class="player-header">
               <span id="displayIgn" class="player-name">---</span>
@@ -119,9 +119,9 @@
           <span id="leaderboardTimeRange">All changes are relative to the last month.</span><br>
           <span id="leaderboardSummaryText">Recent activity on the leaderboard:</span></span>
         </div>
-        
+
         <div class="leaderboard-summary" id="leaderboardSummary" style="display: none;">
-          <div id="activityList" style="width: 100%;"></div>
+          <div id="activityList" style="width: 100%;"></div>edcbb90 (WIP: Leaderboard position changes)
         </div>
 
         <div class="chart-wrapper" style="height: auto; min-height: 400px;">

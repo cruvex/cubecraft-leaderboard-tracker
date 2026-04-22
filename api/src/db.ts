@@ -86,6 +86,11 @@ export async function getLeaderboard(gameId: string, compareDays: number = 30) {
   const currentRows = (allRows as any[]).filter(r => r.current_score != null);
   const departedRows = (allRows as any[]).filter(r => r.current_score == null);
 
+<<<<<<< HEAD
+=======
+  console.log(departedRows);
+
+>>>>>>> edcbb90 (WIP: Leaderboard position changes)
   const rows = currentRows.map((r, i) => {
     const currentRank = i + 1;
     const pastRank: number | null = r.past_rank ? Number(r.past_rank) : null;

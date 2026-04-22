@@ -42,7 +42,7 @@ const el = (id) => document.getElementById(id);
 async function apiFetch(endpoint) {
   const isInternal = endpoint.startsWith("/");
   let url = endpoint;
-  
+
   if (isInternal && currentGame) {
     if (url.startsWith("/top-gainers") || url.startsWith("/leaderboard")) {
       url = `/games/${currentGame.id}${url}`;
@@ -72,7 +72,7 @@ function formatUuid(uuid) {
 
 function renderTopGainers(data) {
   const container = el("topGainers");
-  
+
   if (!data?.length) {
     container.innerHTML = '<div class="text-muted centered-p" style="padding: 2rem;">No data available</div>';
     return;
@@ -89,7 +89,7 @@ function renderTopGainers(data) {
     </thead>
     <tbody></tbody>
   `;
-  
+
   const tbody = table.querySelector("tbody");
   let i = 0;
   data.forEach(row => {
@@ -125,7 +125,7 @@ function getStyle(name) {
 
 function renderChart(rows, ign, scoreType = "Score") {
   const ctx = el("scoreChart").getContext("2d");
-  
+
   const now = Date.now();
   const maxTime = now;
   const minTime = now - (currentDays * 24 * 60 * 60 * 1000);
@@ -205,9 +205,9 @@ function renderChart(rows, ign, scoreType = "Score") {
           min: minTime,
           max: maxTime,
           grid: { display: false },
-          ticks: { 
-            maxRotation: 0, 
-            autoSkip: true, 
+          ticks: {
+            maxRotation: 0,
+            autoSkip: true,
             stepSize: 24 * 60 * 60 * 1000,
             color: textMuted,
             callback: (val) => new Date(val).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
@@ -273,7 +273,7 @@ async function loadPlayerProfile(idOrIgn) {
 
     el("displayIgn").innerText = scoreData.ign;
     el("displayUuid").innerText = formatUuid(scoreData.player);
-    
+
     if (scoreData.rows?.length) {
       el("displayGain7d").innerText = scoreData.gain7d.toLocaleString();
       el("displayGain30d").innerText = scoreData.gain30d.toLocaleString();
@@ -312,7 +312,7 @@ function resetSearch() {
 async function init() {
   const pathname = window.location.pathname;
   const parts = pathname.split("/").filter(Boolean);
-  
+
   // Pattern: /games/:gameName/player/:ign or /games/:gameName
   let initialGameName = null;
   let initialPlayerIgn = null;
@@ -393,7 +393,7 @@ async function init() {
 
       el("daysToggle").querySelectorAll(".toggle-btn").forEach(b => b.classList.remove("active"));
       btn.classList.add("active");
-      
+
       updateLeaderboardDescription();
 
       loadTopGainers();
@@ -511,7 +511,7 @@ function updateLeaderboardDescription() {
 
   const timeText = currentDays === 7 ? "last 7 days" : "last month";
   rangeEl.textContent = `All changes are relative to the ${timeText}.`;
-  
+
   if (summaryTextEl) {
     summaryTextEl.textContent = `The summary below lists players who entered or left the leaderboard in the ${timeText}.`;
   }
@@ -543,12 +543,12 @@ async function loadLeaderboard() {
 
 function renderLeaderboardChart(data) {
   const ctx = el("leaderboardChart").getContext("2d");
-  
+
   if (leaderboardChart) leaderboardChart.destroy();
 
   const scoreType = currentGame?.scoreType || "Score";
   const gameDisplayName = currentGame?.displayName || "Full";
-  
+
   let titleText = `<span class="title-main">${gameDisplayName} Leaderboard</span>`;
   if (data.timestamp) {
     const date = new Date(data.timestamp);
@@ -562,14 +562,14 @@ function renderLeaderboardChart(data) {
     // Update summary
     const summaryEl = el("leaderboardSummary");
     const activityList = el("activityList");
-    
+
     if (summaryEl && data.rows) {
       const newPlayers = data.rows.filter(r => r.isNew);
       const leftPlayers = data.departed || [];
-      
+
       if (newPlayers.length === 0 && leftPlayers.length === 0) {
         summaryEl.style.display = "flex";
-        
+
         activityList.innerHTML = `
           <div class="activity-feed-item" style="color: var(--text-muted); border-left-color: var(--border); font-style: italic; opacity: 0.8;">
             <div class="activity-icon" style="background: var(--text-muted); opacity: 0.3;"></div>
@@ -577,9 +577,9 @@ function renderLeaderboardChart(data) {
           </div>`;
       } else {
         summaryEl.style.display = "flex";
-        
+
         let activityHtml = '';
-        
+
         if (newPlayers.length > 0) {
           newPlayers.forEach(p => {
             activityHtml += `
@@ -589,7 +589,7 @@ function renderLeaderboardChart(data) {
               </div>`;
           });
         }
-        
+
         if (leftPlayers.length > 0) {
           leftPlayers.forEach(p => {
             activityHtml += `
@@ -599,10 +599,10 @@ function renderLeaderboardChart(data) {
               </div>`;
           });
         }
-        
+
         activityList.innerHTML = activityHtml;
       }
-    }
+}
 
   const rows = data.rows || [];
 
@@ -635,7 +635,7 @@ function renderLeaderboardChart(data) {
       afterDraw: (chart) => {
         const { ctx, scales: { y } } = chart;
         const ticks = y.getTicks();
-        
+
         ctx.save();
         ctx.font = 'bold 12px sans-serif';
         ctx.textAlign = 'right';
@@ -663,9 +663,9 @@ function renderLeaderboardChart(data) {
             // Since y.ticks.crossAlign is 'far', the labels are right-aligned against the axis.
             // We want the rank change to be even further right or left?
             // "align the position changes to the right" -> likely means aligned in a column.
-            
+
             // Align rank change to the right of the label area (near the axis line)
-            const xPos = y.right - 5; 
+            const xPos = y.right - 5;
             ctx.fillStyle = color;
             ctx.fillText(text, xPos, yPos);
           }
