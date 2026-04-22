@@ -412,13 +412,6 @@ tr.clickable:hover { background: var(--bg); }
   width: 2rem;
 }
 
-.top-gainers-wrapper th:nth-child(2),
-.top-gainers-wrapper td:nth-child(2) {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 .top-gainers-wrapper th:nth-child(3),
 .top-gainers-wrapper td:nth-child(3) {
   width: 5rem;
