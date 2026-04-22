@@ -22,7 +22,7 @@ export async function getTopGainers(days = 30, gameId: number) {
         pi.player_ign AS ign,
         s.score_gain
     FROM scores s
-    LEFT JOIN player_igns pi ON s.player::uuid = pi.player_uuid
+    LEFT JOIN player_igns pi ON s.player = pi.player_uuid
     WHERE s.score_gain > 0
     ORDER BY s.score_gain DESC
   `;
@@ -34,44 +34,83 @@ export async function getTopGainers(days = 30, gameId: number) {
   }));
 }
 
-export async function getLeaderboard(gameId: string) {
-  const res = await Bun.sql`
-    WITH latest_snapshot AS (
-        SELECT id, timestamp FROM leaderboard_snapshots
-        WHERE 1=1
-        AND game_id = ${gameId}
-        ORDER BY timestamp DESC
-        LIMIT 1
-    ),
-    player_igns AS (
-        SELECT DISTINCT ON (player_uuid)
-            player_uuid,
-            player_ign
-        FROM ign_history
-        ORDER BY player_uuid, id DESC
-    )
-    SELECT
-        lr.player AS uuid,
-        pi.player_ign AS ign,
-        lr.score,
-        ls.timestamp
-    FROM leaderboard_rows lr
-    JOIN latest_snapshot ls ON lr.snapshot_id = ls.id
-    LEFT JOIN player_igns pi ON lr.player::uuid = pi.player_uuid
-    ORDER BY lr.score DESC
+export async function getLeaderboard(gameId: string, compareDays: number = 30) {
+  const formatTimestamp = (ts: unknown): string | null =>
+      ts instanceof Date ? ts.toISOString() : ts ? String(ts) : null;
+
+  const [latestSnapshot] = await Bun.sql`
+    SELECT id, timestamp FROM leaderboard_snapshots
+    WHERE game_id = ${gameId}
+    ORDER BY timestamp DESC
+    LIMIT 1
   `;
 
-  if (!res || res.length === 0) return { rows: [], timestamp: null };
+  if (!latestSnapshot) return { rows: [], departed: [], timestamp: null, compareTimestamp: null };
 
-  const rows = res.map((r: any) => ({
-    player: r.uuid,
-    ign: r.ign || "Unknown",
-    score: r.score == null ? 0 : Number(r.score),
+  const [pastSnapshot] = await Bun.sql`
+    SELECT id, timestamp FROM leaderboard_snapshots
+    WHERE game_id = ${gameId}
+      AND timestamp <= ${latestSnapshot.timestamp}::timestamp - (${compareDays + " days"})::interval
+    ORDER BY timestamp DESC
+    LIMIT 1
+  `;
+
+  // Fetches current + past scores and IGN in one shot.
+  // Departed players (past-only) sort to the end via NULLS LAST on cur.score.
+  const allRows = await Bun.sql`
+    SELECT
+      COALESCE(cur.player, past.player)  AS player,
+      cur.score                          AS current_score,
+      past.score                         AS past_score,
+      past.rk                            AS past_rank,
+      ih.player_ign                      AS ign
+    FROM leaderboard_rows cur
+           FULL OUTER JOIN (
+      SELECT player, score,
+             RANK() OVER (ORDER BY score DESC NULLS LAST) AS rk
+      FROM   leaderboard_rows
+      WHERE  snapshot_id = ${pastSnapshot?.id ?? null}
+    ) past ON cur.player = past.player
+           LEFT JOIN LATERAL (
+      SELECT player_ign FROM ign_history
+      WHERE  player_uuid = COALESCE(cur.player, past.player)
+      ORDER BY id DESC
+      LIMIT 1
+      ) ih ON true
+    WHERE cur.snapshot_id = ${latestSnapshot.id} OR cur.player IS NULL
+  `;
+
+  const currentRows = (allRows as any[]).filter(r => r.current_score != null);
+  const departedRows = (allRows as any[]).filter(r => r.current_score == null);
+
+  console.log(departedRows);
+
+  const rows = currentRows.map((r, i) => {
+    const currentRank = i + 1;
+    const pastRank: number | null = r.past_rank ? Number(r.past_rank) : null;
+    return {
+      player: r.player,
+      ign: r.ign,
+      score: Number(r.current_score),
+      rank: currentRank,
+      prevRank: pastRank,
+      rankChange: pastRank != null ? pastRank - currentRank : null,
+      isNew: pastRank == null,
+    };
+  });
+
+  const departed = departedRows.map(r => ({
+    player: r.player,
+    ign: r.ign,
+    score: Number(r.past_score ?? 0),
+    rank: Number(r.past_rank),
   }));
 
   return {
     rows,
-    timestamp: res[0].timestamp instanceof Date ? res[0].timestamp.toISOString() : String(res[0].timestamp)
+    departed,
+    timestamp: formatTimestamp(latestSnapshot.timestamp),
+    compareTimestamp: formatTimestamp(pastSnapshot?.timestamp),
   };
 }
 

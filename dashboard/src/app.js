@@ -383,8 +383,11 @@ async function init() {
 
       el("daysToggle").querySelectorAll(".toggle-btn").forEach(b => b.classList.remove("active"));
       btn.classList.add("active");
+      
+      updateLeaderboardDescription();
 
       loadTopGainers();
+      loadLeaderboard();
       if (currentPlayer && currentPlayer.data) {
         const scoreType = currentGame?.scoreType || "Wins";
         renderChart(currentPlayer.data.rows, currentPlayer.ign, scoreType);
@@ -392,6 +395,7 @@ async function init() {
     };
 
     updateWarningBanner();
+    updateLeaderboardDescription();
 
     await Promise.all([
       loadTopGainers(),
@@ -476,6 +480,19 @@ function updateWarningBanner() {
   warningText.textContent = `Notice: Historical data is currently only available starting from ${dateStr}.`;
 }
 
+function updateLeaderboardDescription() {
+  const rangeEl = el("leaderboardTimeRange");
+  const summaryTextEl = el("leaderboardSummaryText");
+  if (!rangeEl) return;
+
+  const timeText = currentDays === 7 ? "last 7 days" : "last month";
+  rangeEl.textContent = `All changes are relative to the ${timeText}.`;
+  
+  if (summaryTextEl) {
+    summaryTextEl.textContent = `The summary below lists players who entered or left the leaderboard in the ${timeText}.`;
+  }
+}
+
 async function loadTopGainers() {
   const container = el("topGainers");
   container.innerHTML = '<div class="text-muted centered-p" style="padding: 1.5rem;">Loading...</div>';
@@ -491,7 +508,7 @@ async function loadTopGainers() {
 async function loadLeaderboard() {
   el("leaderboardLoading").style.display = "flex";
   try {
-    const leaderboard = await apiFetch("/leaderboard");
+    const leaderboard = await apiFetch(`/leaderboard?days=${currentDays}`);
     renderLeaderboardChart(leaderboard);
   } catch (err) {
     console.error("Failed to load leaderboard", err);
@@ -517,6 +534,44 @@ function renderLeaderboardChart(data) {
     titleText += `</div>`;
   }
   el("leaderboardTitle").innerHTML = titleText;
+
+    // Update summary
+    const summaryEl = el("leaderboardSummary");
+    const newCountEl = el("newEntriesCount");
+    const leftCountEl = el("leftEntriesCount");
+    const newPlayersList = el("newPlayersList");
+    const leftPlayersList = el("leftPlayersList");
+    
+    if (summaryEl && data.rows) {
+      const newPlayers = data.rows.filter(r => r.isNew);
+      const leftPlayers = data.departed || [];
+      
+      newCountEl.textContent = newPlayers.length;
+      leftCountEl.textContent = leftPlayers.length;
+      
+      const newSection = el("newEntriesSection");
+      const leftSection = el("leftEntriesSection");
+      const divider = summaryEl.querySelector('.summary-divider');
+      
+      if (newPlayers.length === 0 && leftPlayers.length === 0) {
+        summaryEl.style.display = "none";
+      } else {
+        summaryEl.style.display = "flex";
+        newSection.style.display = newPlayers.length > 0 ? "flex" : "none";
+        leftSection.style.display = leftPlayers.length > 0 ? "flex" : "none";
+        if (divider) {
+          divider.style.display = (newPlayers.length > 0 && leftPlayers.length > 0) ? "block" : "none";
+        }
+      }
+
+      newPlayersList.innerHTML = newPlayers.length > 0 
+        ? newPlayers.map(p => `<span class="player-tag">${p.ign}</span>`).join('')
+        : '';
+        
+      leftPlayersList.innerHTML = leftPlayers.length > 0
+        ? leftPlayers.map(p => `<span class="player-tag">${p.ign}</span>`).join('')
+        : '';
+    }
 
   const rows = data.rows || [];
 
@@ -544,6 +599,49 @@ function renderLeaderboardChart(data) {
         xAxisID: 'xBottom'
       }]
     },
+    plugins: [{
+      id: 'rankChangeLabels',
+      afterDraw: (chart) => {
+        const { ctx, scales: { y } } = chart;
+        const ticks = y.getTicks();
+        
+        ctx.save();
+        ctx.font = 'bold 12px sans-serif';
+        ctx.textAlign = 'right';
+        ctx.textBaseline = 'middle';
+
+        ticks.forEach((tick, index) => {
+          const row = rows[index];
+          if (!row) return;
+
+          let text = '';
+          let color = '';
+
+          if (row.isNew) {
+            text = 'NEW';
+            color = '#3b82f6';
+          } else if (row.rankChange !== null && row.rankChange !== 0) {
+            text = (row.rankChange > 0 ? '+' : '') + row.rankChange;
+            color = row.rankChange > 0 ? '#10b981' : '#ef4444';
+          }
+
+          if (text) {
+            const yPos = y.getPixelForTick(index);
+            // Draw it slightly to the left of the player name (which is aligned 'far')
+            // Or maybe on the right side of the labels?
+            // Since y.ticks.crossAlign is 'far', the labels are right-aligned against the axis.
+            // We want the rank change to be even further right or left?
+            // "align the position changes to the right" -> likely means aligned in a column.
+            
+            // Align rank change to the right of the label area (near the axis line)
+            const xPos = y.right - 5; 
+            ctx.fillStyle = color;
+            ctx.fillText(text, xPos, yPos);
+          }
+        });
+        ctx.restore();
+      }
+    }],
     options: {
       indexAxis: 'y',
       responsive: true,
@@ -561,7 +659,14 @@ function renderLeaderboardChart(data) {
           usePointStyle: true,
           callbacks: {
             label: (context) => {
-              return `${scoreType}: ${context.parsed.x.toLocaleString()}`;
+              const d = rows[context.dataIndex];
+              let label = `${scoreType}: ${context.parsed.x.toLocaleString()}`;
+              if (d.isNew) {
+                label += " (New Entry)";
+              } else if (d.rankChange !== null && d.rankChange !== 0) {
+                label += ` (Rank Change: ${d.rankChange > 0 ? '+' : ''}${d.rankChange})`;
+              }
+              return label;
             }
           }
         }
@@ -601,7 +706,7 @@ function renderLeaderboardChart(data) {
           },
           ticks: {
             autoSkip: false,
-            padding: 10,
+            padding: 15,
             crossAlign: 'far',
             color: textMuted,
             font: { size: 12 }

@@ -505,3 +505,111 @@ code {
 .leaderboard-card {
   grid-column: 1 / -1;
 }
+
+.leaderboard-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  background: var(--bg);
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  font-size: 0.85rem;
+}
+
+.summary-section {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.summary-label {
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.summary-value {
+  font-weight: 700;
+  color: var(--text);
+  background: var(--card-bg);
+  padding: 0.1rem 0.4rem;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  font-size: 0.75rem;
+}
+
+.summary-divider {
+  width: 1px;
+  height: 1.5rem;
+  background: var(--border);
+}
+
+.player-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  font-size: 0.75rem;
+  max-height: 80px;
+  overflow-y: auto;
+}
+
+.player-tag {
+  background: var(--card-bg);
+  padding: 1px 6px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-weight: 500;
+}
+
+.card-description {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-bottom: 1rem;
+  line-height: 1.4;
+}
+
+.desc-item {
+  display: inline-block;
+  margin-right: 0.5rem;
+}
+
+.rank-new-tag {
+  color: #3b82f6;
+  font-weight: 700;
+  font-size: 0.75rem;
+}
+
+@media (max-width: 600px) {
+  .leaderboard-summary {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .summary-divider {
+    display: none;
+  }
+}
+
+.rank-change {
+  font-size: 0.75rem;
+  font-weight: 700;
+  margin-left: 0.5rem;
+}
+
+.rank-up {
+  color: #10b981;
+}
+
+.rank-down {
+  color: #ef4444;
+}
+
+.rank-new {
+  color: #3b82f6;
+  font-size: 0.7rem;
+  padding: 1px 4px;
+  background: rgba(59, 130, 246, 0.1);
+  border-radius: 4px;
+}
