@@ -537,40 +537,47 @@ function renderLeaderboardChart(data) {
 
     // Update summary
     const summaryEl = el("leaderboardSummary");
-    const newCountEl = el("newEntriesCount");
-    const leftCountEl = el("leftEntriesCount");
-    const newPlayersList = el("newPlayersList");
-    const leftPlayersList = el("leftPlayersList");
+    const activityList = el("activityList");
     
     if (summaryEl && data.rows) {
       const newPlayers = data.rows.filter(r => r.isNew);
       const leftPlayers = data.departed || [];
       
-      newCountEl.textContent = newPlayers.length;
-      leftCountEl.textContent = leftPlayers.length;
-      
-      const newSection = el("newEntriesSection");
-      const leftSection = el("leftEntriesSection");
-      const divider = summaryEl.querySelector('.summary-divider');
-      
       if (newPlayers.length === 0 && leftPlayers.length === 0) {
-        summaryEl.style.display = "none";
+        summaryEl.style.display = "flex";
+        
+        activityList.innerHTML = `
+          <div class="activity-feed-item" style="color: var(--text-muted); border-left-color: var(--border); font-style: italic; opacity: 0.8;">
+            <div class="activity-icon" style="background: var(--text-muted); opacity: 0.3;"></div>
+            <span>No recent entries to the leaderboard</span>
+          </div>`;
       } else {
         summaryEl.style.display = "flex";
-        newSection.style.display = newPlayers.length > 0 ? "flex" : "none";
-        leftSection.style.display = leftPlayers.length > 0 ? "flex" : "none";
-        if (divider) {
-          divider.style.display = (newPlayers.length > 0 && leftPlayers.length > 0) ? "block" : "none";
-        }
-      }
-
-      newPlayersList.innerHTML = newPlayers.length > 0 
-        ? newPlayers.map(p => `<span class="player-tag">${p.ign}</span>`).join('')
-        : '';
         
-      leftPlayersList.innerHTML = leftPlayers.length > 0
-        ? leftPlayers.map(p => `<span class="player-tag">${p.ign}</span>`).join('')
-        : '';
+        let activityHtml = '';
+        
+        if (newPlayers.length > 0) {
+          newPlayers.forEach(p => {
+            activityHtml += `
+              <div class="activity-feed-item activity-joined">
+                <div class="activity-icon"></div>
+                <span><span class="activity-player">${p.ign}</span> entered the leaderboard</span>
+              </div>`;
+          });
+        }
+        
+        if (leftPlayers.length > 0) {
+          leftPlayers.forEach(p => {
+            activityHtml += `
+              <div class="activity-feed-item activity-left">
+                <div class="activity-icon"></div>
+                <span><span class="activity-player">${p.ign}</span> left the leaderboard</span>
+              </div>`;
+          });
+        }
+        
+        activityList.innerHTML = activityHtml;
+      }
     }
 
   const rows = data.rows || [];

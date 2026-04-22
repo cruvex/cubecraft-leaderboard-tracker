@@ -116,21 +116,11 @@
           <span class="rank-up">▲</span> / <span class="rank-down">▼</span> indicates position changes,
           <span class="rank-new-tag">NEW</span> indicates first-time entries.
           <span id="leaderboardTimeRange">All changes are relative to the last month.</span><br>
-          <span id="leaderboardSummaryText">The summary below lists players who entered or left the leaderboard in the last month.</span></span>
+          <span id="leaderboardSummaryText">Recent activity on the leaderboard:</span></span>
         </div>
         
         <div class="leaderboard-summary" id="leaderboardSummary" style="display: none;">
-          <div class="summary-section" id="newEntriesSection">
-            <span class="summary-label">New:</span>
-            <span class="summary-value" id="newEntriesCount">0</span>
-            <div class="player-list" id="newPlayersList"></div>
-          </div>
-          <div class="summary-divider"></div>
-          <div class="summary-section" id="leftEntriesSection">
-            <span class="summary-label">Left:</span>
-            <span class="summary-value" id="leftEntriesCount">0</span>
-            <div class="player-list" id="leftPlayersList"></div>
-          </div>
+          <div id="activityList" style="width: 100%;"></div>
         </div>
 
         <div class="chart-wrapper" style="height: auto; min-height: 400px;">

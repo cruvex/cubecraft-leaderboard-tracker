@@ -59,31 +59,31 @@ export async function getLeaderboard(gameId: string, compareDays: number = 30) {
   // Departed players (past-only) sort to the end via NULLS LAST on cur.score.
   const allRows = await Bun.sql`
     SELECT
-      COALESCE(cur.player, past.player)  AS player,
-      cur.score                          AS current_score,
-      past.score                         AS past_score,
-      past.rk                            AS past_rank,
-      ih.player_ign                      AS ign
-    FROM leaderboard_rows cur
-           FULL OUTER JOIN (
+      COALESCE(cur.player, past.player) AS player,
+      cur.score                         AS current_score,
+      past.score                        AS past_score,
+      past.rk                           AS past_rank,
+      ih.player_ign                     AS ign
+    FROM (
+      SELECT player, score
+      FROM leaderboard_rows
+      WHERE snapshot_id = ${latestSnapshot.id}
+    ) cur
+    FULL OUTER JOIN (
       SELECT player, score,
              RANK() OVER (ORDER BY score DESC NULLS LAST) AS rk
-      FROM   leaderboard_rows
-      WHERE  snapshot_id = ${pastSnapshot?.id ?? null}
+      FROM leaderboard_rows
+      WHERE snapshot_id = ${pastSnapshot?.id ?? null}
     ) past ON cur.player = past.player
-           LEFT JOIN LATERAL (
-      SELECT player_ign FROM ign_history
-      WHERE  player_uuid = COALESCE(cur.player, past.player)
-      ORDER BY id DESC
-      LIMIT 1
-      ) ih ON true
-    WHERE cur.snapshot_id = ${latestSnapshot.id} OR cur.player IS NULL
+           LEFT JOIN (
+      SELECT DISTINCT ON (player_uuid) player_uuid, player_ign
+      FROM ign_history
+      ORDER BY player_uuid, id DESC
+    ) ih ON ih.player_uuid = COALESCE(cur.player, past.player)
   `;
 
   const currentRows = (allRows as any[]).filter(r => r.current_score != null);
   const departedRows = (allRows as any[]).filter(r => r.current_score == null);
-
-  console.log(departedRows);
 
   const rows = currentRows.map((r, i) => {
     const currentRank = i + 1;

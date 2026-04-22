@@ -311,6 +311,7 @@ tr.clickable:hover { background: var(--bg); }
 
 #topGainersCard {
   max-height: 713px;
+  min-height: 713px;
 }
 
 
@@ -508,60 +509,58 @@ code {
 
 .leaderboard-summary {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 1rem;
-  margin-bottom: 0.75rem;
-  padding: 0.5rem 0.75rem;
-  background: var(--bg);
-  border-radius: 8px;
-  border: 1px solid var(--border);
-  font-size: 0.85rem;
-}
-
-.summary-section {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-}
-
-.summary-label {
-  font-weight: 600;
-  color: var(--text-muted);
-}
-
-.summary-value {
-  font-weight: 700;
-  color: var(--text);
-  background: var(--card-bg);
-  padding: 0.1rem 0.4rem;
-  border-radius: 4px;
-  border: 1px solid var(--border);
-  font-size: 0.75rem;
-}
-
-.summary-divider {
-  width: 1px;
-  height: 1.5rem;
-  background: var(--border);
-}
-
-.player-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.3rem;
-  font-size: 0.75rem;
-  max-height: 80px;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  max-height: 200px;
   overflow-y: auto;
 }
 
-.player-tag {
-  background: var(--card-bg);
-  padding: 1px 6px;
+.activity-feed-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-family: 'Minecraftia', sans-serif;
+  font-size: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  background: rgba(0, 0, 0, 0.03);
+  border-left: 3px solid var(--border);
   border-radius: 4px;
-  border: 1px solid var(--border);
+  animation: slideIn 0.3s ease-out;
+}
+
+[theme="dark"] .activity-feed-item {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateX(-10px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+.activity-icon {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+}
+
+.activity-joined .activity-icon { background: #3b82f6; box-shadow: 0 0 8px rgba(59, 130, 246, 0.5); }
+.activity-left .activity-icon { background: #ef4444; box-shadow: 0 0 8px rgba(239, 68, 68, 0.5); }
+
+.activity-joined { border-left-color: #3b82f6; color: var(--text); }
+.activity-left { border-left-color: #ef4444; color: var(--text); }
+
+.activity-player {
+  font-weight: bold;
+}
+
+.activity-joined .activity-player { color: #3b82f6; }
+.activity-left .activity-player { color: #ef4444; }
+
+.player-tag:hover {
   color: var(--text);
-  font-weight: 500;
+  text-decoration: underline;
+  cursor: default;
 }
 
 .card-description {
@@ -586,6 +585,7 @@ code {
   .leaderboard-summary {
     flex-direction: column;
     align-items: flex-start;
+    gap: 0.75rem;
   }
   .summary-divider {
     display: none;
