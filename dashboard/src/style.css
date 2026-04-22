@@ -311,6 +311,7 @@ tr.clickable:hover { background: var(--bg); }
 
 #topGainersCard {
   max-height: 713px;
+  min-height: 713px;
 }
 
 
@@ -504,4 +505,111 @@ code {
 
 .leaderboard-card {
   grid-column: 1 / -1;
+}
+
+.leaderboard-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.activity-feed-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-family: 'Minecraftia', sans-serif;
+  font-size: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  background: rgba(0, 0, 0, 0.03);
+  border-left: 3px solid var(--border);
+  border-radius: 4px;
+  animation: slideIn 0.3s ease-out;
+}
+
+[theme="dark"] .activity-feed-item {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateX(-10px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+.activity-icon {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+}
+
+.activity-joined .activity-icon { background: #3b82f6; box-shadow: 0 0 8px rgba(59, 130, 246, 0.5); }
+.activity-left .activity-icon { background: #ef4444; box-shadow: 0 0 8px rgba(239, 68, 68, 0.5); }
+
+.activity-joined { border-left-color: #3b82f6; color: var(--text); }
+.activity-left { border-left-color: #ef4444; color: var(--text); }
+
+.activity-player {
+  font-weight: bold;
+}
+
+.activity-joined .activity-player { color: #3b82f6; }
+.activity-left .activity-player { color: #ef4444; }
+
+.player-tag:hover {
+  color: var(--text);
+  text-decoration: underline;
+  cursor: default;
+}
+
+.card-description {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-bottom: 1rem;
+  line-height: 1.4;
+}
+
+.desc-item {
+  display: inline-block;
+  margin-right: 0.5rem;
+}
+
+.rank-new-tag {
+  color: #3b82f6;
+  font-weight: 700;
+  font-size: 0.75rem;
+}
+
+@media (max-width: 600px) {
+  .leaderboard-summary {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+  .summary-divider {
+    display: none;
+  }
+}
+
+.rank-change {
+  font-size: 0.75rem;
+  font-weight: 700;
+  margin-left: 0.5rem;
+}
+
+.rank-up {
+  color: #10b981;
+}
+
+.rank-down {
+  color: #ef4444;
+}
+
+.rank-new {
+  color: #3b82f6;
+  font-size: 0.7rem;
+  padding: 1px 4px;
+  background: rgba(59, 130, 246, 0.1);
+  border-radius: 4px;
 }

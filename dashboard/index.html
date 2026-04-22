@@ -111,6 +111,18 @@
 
       <div class="card leaderboard-card">
         <div class="card-title" id="leaderboardTitle">Full Leaderboard</div>
+        <div class="card-description">
+          <span class="desc-item">This chart shows the current top 200 players.
+          <span class="rank-up">▲</span> / <span class="rank-down">▼</span> indicates position changes,
+          <span class="rank-new-tag">NEW</span> indicates first-time entries.
+          <span id="leaderboardTimeRange">All changes are relative to the last month.</span><br>
+          <span id="leaderboardSummaryText">Recent activity on the leaderboard:</span></span>
+        </div>
+        
+        <div class="leaderboard-summary" id="leaderboardSummary" style="display: none;">
+          <div id="activityList" style="width: 100%;"></div>
+        </div>
+
         <div class="chart-wrapper" style="height: auto; min-height: 400px;">
           <div id="leaderboardLoading" class="loading-overlay" style="display: none;">Loading leaderboard...</div>
           <canvas id="leaderboardChart"></canvas>

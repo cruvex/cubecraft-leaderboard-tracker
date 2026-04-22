@@ -50,8 +50,10 @@ async function handleGames() {
     return jsonResponse(games);
 }
 
-async function handleLeaderboard (req, params: { gameId: string })  {
-    const out = await getLeaderboard(params.gameId);
+async function handleLeaderboard (req: Request, params: { gameId: string })  {
+    const url = new URL(req.url);
+    const days = Number(url.searchParams.get("days") || 30);
+    const out = await getLeaderboard(params.gameId, days);
     return jsonResponse(out);
 }
 
