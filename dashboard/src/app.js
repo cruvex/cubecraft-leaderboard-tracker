@@ -25,7 +25,7 @@ const apiBase = "/api";
 let chart = null;
 let leaderboardChart = null;
 let games = [];
-let currentGameId = 11;
+let currentGame = undefined;
 let currentDays = 30;
 /** @type {{ id: string, ign: string, data: Object[] } | undefined} */
 let currentPlayer = undefined;
@@ -42,13 +42,13 @@ async function apiFetch(endpoint) {
   const isInternal = endpoint.startsWith("/");
   let url = endpoint;
   
-  if (isInternal && currentGameId) {
+  if (isInternal && currentGame) {
     if (url.startsWith("/top-gainers") || url.startsWith("/leaderboard")) {
-      url = `/games/${currentGameId}${url}`;
+      url = `/games/${currentGame.id}${url}`;
     } else if (url.startsWith("/player/")) {
       const parts = url.split("/");
       // parts[0] is "", parts[1] is "player", parts[2] is ":id", parts[3] is "scores"
-      url = `/games/${currentGameId}/player/${parts[2]}`;
+      url = `/games/${currentGame.id}/player/${parts[2]}`;
     }
 
     if (url !== "/games" && !url.includes("leaderboard") && !url.includes("?days=") && !url.includes("player")) {
@@ -106,7 +106,7 @@ function renderTopGainers(data) {
       </td>
     `;
     tr.onclick = () => {
-      if (currentPlayer && currentPlayer.id === row.player) return;
+      if (currentPlayer && (currentPlayer.id === row.player)) return;
       loadPlayerProfile(row.player);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     };
@@ -230,11 +230,18 @@ function renderChart(rows, ign, scoreType = "Score") {
   });
 }
 
-async function loadPlayerProfile(id) {
-  if (!id) return;
+async function updatePath() {
+  if (!currentGame) return;
 
-  const newPath = `/player/${id}`;
+  let newPath = `/games/${currentGame.name}`;
+  if (currentPlayer && currentPlayer.ign) {
+    newPath += `/player/${currentPlayer.ign}`;
+  }
   window.history.replaceState({}, "", newPath);
+}
+
+async function loadPlayerProfile(idOrIgn) {
+  if (!idOrIgn) return;
 
   el("emptyState").style.display = "none";
   el("errorState").style.display = "none";
@@ -242,18 +249,19 @@ async function loadPlayerProfile(id) {
   el("chartLoading").style.display = "flex";
 
   el("displayIgn").innerText = "Loading...";
-  el("displayUuid").innerText = id;
+  el("displayUuid").innerText = idOrIgn;
   el("displayGain7d").innerText = "---";
   el("displayGain30d").innerText = "---";
   el("displayCurrentScore").innerText = "---";
 
-  const selectedGame = games.find(g => g.id === Number(currentGameId));
-  const scoreType = selectedGame?.scoreType || "Wins";
+  const scoreType = currentGame?.scoreType || "Wins";
   el("scoreLabel").innerText = `Total ${scoreType}`;
 
   try {
-    const scoreData = await apiFetch(`/player/${id}/scores`);
-    currentPlayer = { id, ign: scoreData.ign, data: scoreData };
+    const scoreData = await apiFetch(`/player/${idOrIgn}/scores`);
+    currentPlayer = { id: scoreData.player, ign: scoreData.ign, data: scoreData };
+
+    await updatePath();
 
     el("displayIgn").innerText = scoreData.ign;
     el("displayUuid").innerText = formatUuid(scoreData.player);
@@ -276,15 +284,14 @@ async function loadPlayerProfile(id) {
     el("playerProfile").style.display = "none";
     el("errorState").style.display = "block";
     el("errorTitle").innerText = "Player Not Found";
-    const currentGame = games.find(g => g.id === Number(currentGameId));
-    el("errorMessage").innerText = `Player '${currentPlayer.ign || id}' is not on the ${currentGame.displayName} leaderboard.`;
+    el("errorMessage").innerText = `Player '${idOrIgn}' is not on the ${currentGame?.displayName || "selected game"} leaderboard.`;
   } finally {
     el("chartLoading").style.display = "none";
   }
 }
 
 function resetSearch() {
-  window.history.replaceState({}, "", "/");
+  updatePath();
 
   el("errorState").style.display = "none";
   el("playerProfile").style.display = "none";
@@ -295,11 +302,29 @@ function resetSearch() {
 
 async function init() {
   const pathname = window.location.pathname;
-  if (pathname.startsWith("/player/")) {
-    currentPlayer = { id: decodeURIComponent(pathname.split("/").pop()), ign: undefined, data: null };
-  }
+  const parts = pathname.split("/").filter(Boolean);
   
-  resetSearch()
+  // Pattern: /games/:gameName/player/:ign or /games/:gameName
+  let initialGameName = null;
+  let initialPlayerIgn = null;
+
+  if (parts.length > 0) {
+    if (parts[0] === "games" && parts.length >= 2) {
+      initialGameName = parts[1];
+      if (parts[2] === "player" && parts.length >= 4) {
+        initialPlayerIgn = parts[3];
+      } else if (parts.length > 2) {
+        // Invalid structure under /games/
+        window.location.href = "/";
+        return;
+      }
+    } else {
+      // Invalid path (doesn't start with /games/ or just /games)
+      window.location.href = "/";
+      return;
+    }
+  }
+
   try {
     const activeBtn = el("daysToggle").querySelector(".toggle-btn.active");
     if (activeBtn) {
@@ -308,25 +333,43 @@ async function init() {
 
     const fetchedGames = await apiFetch("/games");
     games = fetchedGames.filter(g => g.shouldTrack);
+
+    // Default to Team Eggwars if no game found in path
+    if (!initialGameName) {
+      currentGame = games.find(g => g.name === 'team_eggwars') || games[0];
+    }
+
+    if (initialGameName) {
+      const game = games.find(g => g.name === initialGameName);
+      if (game) {
+        currentGame = game;
+      } else {
+        // Game not found
+        window.location.href = "/";
+        return;
+      }
+    }
+
     const selector = el("gameSelector");
     games.forEach(game => {
       if (!enabledGames.includes(game.name)) return;
       const opt = document.createElement("option");
       opt.value = game.id;
       opt.textContent = game.displayName;
-      opt.selected = game.id === currentGameId;
+      opt.selected = game.id === currentGame?.id;
       selector.appendChild(opt);
     });
 
     selector.onchange = (e) => {
-      currentGameId = Number(e.target.value) || null;
+      const gameId = Number(e.target.value);
+      currentGame = games.find(g => g.id === gameId) || null;
       if (currentPlayer) currentPlayer.data = null;
       updateWarningBanner();
+      updatePath();
       loadTopGainers();
       loadLeaderboard();
       if (currentPlayer) {
-        const savedId = currentPlayer.id;
-        loadPlayerProfile(savedId);
+        loadPlayerProfile(currentPlayer.id);
       }
     };
 
@@ -343,8 +386,7 @@ async function init() {
 
       loadTopGainers();
       if (currentPlayer && currentPlayer.data) {
-        const selectedGame = games.find(g => g.id === Number(currentGameId));
-        const scoreType = selectedGame?.scoreType || "Wins";
+        const scoreType = currentGame?.scoreType || "Wins";
         renderChart(currentPlayer.data.rows, currentPlayer.ign, scoreType);
       }
     };
@@ -354,8 +396,11 @@ async function init() {
     await Promise.all([
       loadTopGainers(),
       loadLeaderboard(),
-      currentPlayer ? loadPlayerProfile(currentPlayer.id) : Promise.resolve(),
+      initialPlayerIgn ? loadPlayerProfile(initialPlayerIgn) : Promise.resolve(),
     ]);
+    if (!initialPlayerIgn) {
+      updatePath();
+    }
   } catch (err) {
     console.error("Initialization failed", err);
   }
@@ -424,11 +469,10 @@ function updateAllChartsTheme() {
 }
 
 function updateWarningBanner() {
-  const selectedGame = games.find((g) => g.id === Number(currentGameId));
   const warningText = el("warningText");
-  if (!selectedGame || !warningText) return;
+  if (!currentGame || !warningText) return;
 
-  const dateStr = TRACKING_START_DATES[selectedGame.name] ?? "recently";
+  const dateStr = TRACKING_START_DATES[currentGame.name] ?? "recently";
   warningText.textContent = `Notice: Historical data is currently only available starting from ${dateStr}.`;
 }
 
@@ -461,9 +505,8 @@ function renderLeaderboardChart(data) {
   
   if (leaderboardChart) leaderboardChart.destroy();
 
-  const selectedGame = games.find(g => g.id === Number(currentGameId));
-  const scoreType = selectedGame?.scoreType || "Score";
-  const gameDisplayName = selectedGame?.displayName || "Full";
+  const scoreType = currentGame?.scoreType || "Score";
+  const gameDisplayName = currentGame?.displayName || "Full";
   
   let titleText = `<span class="title-main">${gameDisplayName} Leaderboard</span>`;
   if (data.timestamp) {
