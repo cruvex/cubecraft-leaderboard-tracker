@@ -27,7 +27,7 @@ let leaderboardChart = null;
 let games = [];
 let currentGameId = 11;
 let currentDays = 30;
-/** @type {{ id: string, data: Object[] } | undefined} */
+/** @type {{ id: string, ign: string, data: Object[] } | undefined} */
 let currentPlayer = undefined;
 const enabledGames = ["team_eggwars", "solo_skywars"];
 
@@ -253,7 +253,7 @@ async function loadPlayerProfile(id) {
 
   try {
     const scoreData = await apiFetch(`/player/${id}/scores`);
-    currentPlayer = { id, data: scoreData };
+    currentPlayer = { id, ign: scoreData.ign, data: scoreData };
 
     el("displayIgn").innerText = scoreData.ign;
     el("displayUuid").innerText = formatUuid(scoreData.player);
@@ -277,7 +277,7 @@ async function loadPlayerProfile(id) {
     el("errorState").style.display = "block";
     el("errorTitle").innerText = "Player Not Found";
     const currentGame = games.find(g => g.id === Number(currentGameId));
-    el("errorMessage").innerText = `Player '${id}' is not on the ${currentGame.displayName} leaderboard.`;
+    el("errorMessage").innerText = `Player '${currentPlayer.ign || id}' is not on the ${currentGame.displayName} leaderboard.`;
   } finally {
     el("chartLoading").style.display = "none";
   }
@@ -296,7 +296,7 @@ function resetSearch() {
 async function init() {
   const pathname = window.location.pathname;
   if (pathname.startsWith("/player/")) {
-    currentPlayer = { id: decodeURIComponent(pathname.split("/").pop()), data: null };
+    currentPlayer = { id: decodeURIComponent(pathname.split("/").pop()), ign: undefined, data: null };
   }
   
   resetSearch()
@@ -326,7 +326,6 @@ async function init() {
       loadLeaderboard();
       if (currentPlayer) {
         const savedId = currentPlayer.id;
-        currentPlayer = null;
         loadPlayerProfile(savedId);
       }
     };
@@ -346,7 +345,7 @@ async function init() {
       if (currentPlayer && currentPlayer.data) {
         const selectedGame = games.find(g => g.id === Number(currentGameId));
         const scoreType = selectedGame?.scoreType || "Wins";
-        renderChart(currentPlayer.data.rows, currentPlayer.data.ign, scoreType);
+        renderChart(currentPlayer.data.rows, currentPlayer.ign, scoreType);
       }
     };
 

@@ -14,13 +14,9 @@ function jsonResponse(obj: unknown, status = 200) {
 /**
  * Resolve an ID which could be a UUID or an IGN to a UUID.
  */
-async function resolvePlayerId(id: string): Promise<string> {
+async function resolvePlayerId(id: string): Promise<string | null> {
     const isUuid = id.length >= 32 && (id.includes("-") || id.length === 32);
-    if (!isUuid) {
-        const resolvedUuid = await getUuidByIgn(id);
-        if (resolvedUuid) return resolvedUuid;
-    }
-    return id;
+    return isUuid ? id : await getUuidByIgn(id);
 }
 
 // Route Handlers
@@ -29,7 +25,7 @@ async function handleTopGainers(req: Request, params: { gameId: string }) {
     const days = Number(url.searchParams.get("days") || 30);
     const gameId = Number(params.gameId);
     if (isNaN(gameId)) return jsonResponse({ error: "Invalid gameId" }, 400);
-    const out = await getTopGainers(days, 50, gameId);
+    const out = await getTopGainers(days, gameId);
     return jsonResponse(out);
 }
 
@@ -43,6 +39,9 @@ async function handlePlayerScores(req: Request, params: { gameId: string, id: st
     const gameId = Number(params.gameId);
     if (isNaN(gameId)) return jsonResponse({ error: "Invalid gameId" }, 400);
     const data = await getPlayerScores(id, days, gameId);
+    if (!data) {
+        return jsonResponse({ error: "Player scores not found" }, 404);
+    }
     return jsonResponse(data);
 }
 

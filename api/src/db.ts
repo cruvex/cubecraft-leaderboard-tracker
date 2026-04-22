@@ -1,4 +1,4 @@
-export async function getTopGainers(days = 30, limit = 50, gameId: number) {
+export async function getTopGainers(days = 30, gameId: number) {
   const res = await Bun.sql`
     WITH scores AS (
       SELECT
@@ -25,7 +25,6 @@ export async function getTopGainers(days = 30, limit = 50, gameId: number) {
     LEFT JOIN player_igns pi ON s.player::uuid = pi.player_uuid
     WHERE s.score_gain > 0
     ORDER BY s.score_gain DESC
-    LIMIT ${limit}
   `;
 
   return (res || []).map((r: any) => ({
@@ -78,6 +77,16 @@ export async function getLeaderboard(gameId: string) {
 
 
 export async function getPlayerScores(uuid: string, days = 30, gameId: number) {
+  const ignRes = await Bun.sql`
+    SELECT player_ign
+    FROM ign_history
+    WHERE player_uuid = ${uuid}
+    ORDER BY id DESC
+    LIMIT 1
+  `;
+  if (!ignRes || ignRes.length === 0) return null;
+  const ign = ignRes[0].player_ign;
+
   const scores = await Bun.sql`
     SELECT ls.timestamp, lr.score
     FROM leaderboard_rows lr
@@ -88,16 +97,9 @@ export async function getPlayerScores(uuid: string, days = 30, gameId: number) {
     ORDER BY ls.timestamp;
   `;
 
-  const ignRes = await Bun.sql`
-    SELECT player_ign
-    FROM ign_history
-    WHERE player_uuid = ${uuid}
-    ORDER BY id DESC
-    LIMIT 1
-  `;
-  const ign = ignRes && ignRes[0] ? ignRes[0].player_ign : "Unknown";
+  if (!scores || scores.length === 0) return null;
 
-  const rows = (scores || []).map((r: any) => ({
+  const rows = scores.map((r: any) => ({
     timestamp: r.timestamp instanceof Date ? r.timestamp.toISOString() : String(r.timestamp),
     score: r.score == null ? 0 : Number(r.score),
   }));
