@@ -80,6 +80,7 @@ export async function getLeaderboard(gameId: string, compareDays: number = 30) {
       FROM ign_history
       ORDER BY player_uuid, id DESC
     ) ih ON ih.player_uuid = COALESCE(cur.player, past.player)
+    ORDER BY cur.score DESC NULLS LAST
   `;
 
   const currentRows = (allRows as any[]).filter(r => r.current_score != null);
