@@ -483,7 +483,6 @@ tr.clickable:hover { background: var(--bg); }
 
 .chart-wrapper {
   position: relative;
-  margin-top: 1rem;
 }
 
 .player-ign-cell {

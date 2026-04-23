@@ -213,6 +213,14 @@ function renderChart(rows, ign, scoreType = "Score") {
           }
         },
         y: {
+          title: {
+            display: true,
+            text: scoreType,
+            color: textMuted,
+            font: {
+              weight: 'bold'
+            }
+          },
           beginAtZero: false,
           suggestedMin: minVal - padding,
           suggestedMax: maxVal + padding,
@@ -443,6 +451,7 @@ function updateAllChartsTheme() {
     chart.options.scales.x.ticks.color = textMuted;
     chart.options.scales.y.ticks.color = textMuted;
     chart.options.scales.y.grid.color = border;
+    chart.options.scales.y.title.color = textMuted;
 
     chart.options.plugins.tooltip.backgroundColor = cardBg;
     chart.options.plugins.tooltip.titleColor = text;
@@ -458,8 +467,10 @@ function updateAllChartsTheme() {
 
     leaderboardChart.options.scales.xTop.grid.color = border;
     leaderboardChart.options.scales.xTop.ticks.color = textMuted;
+    leaderboardChart.options.scales.xTop.title.color = textMuted;
     leaderboardChart.options.scales.xBottom.grid.color = border;
     leaderboardChart.options.scales.xBottom.ticks.color = textMuted;
+    leaderboardChart.options.scales.xBottom.title.color = textMuted;
     leaderboardChart.options.scales.y.grid.color = border;
     leaderboardChart.options.scales.y.ticks.color = textMuted;
 
@@ -483,7 +494,14 @@ function updateWarningBanner() {
 function updateLeaderboardDescription() {
   const rangeEl = el("leaderboardTimeRange");
   const summaryTextEl = el("leaderboardSummaryText");
+  const scoreTypeEls = document.querySelectorAll(".leaderboardScoreType");
+
   if (!rangeEl) return;
+
+  const scoreType = currentGame?.scoreType || "Wins";
+  scoreTypeEls.forEach(el => {
+    el.textContent = scoreType;
+  })
 
   const timeText = currentDays === 7 ? "last 7 days" : "last month";
   rangeEl.textContent = `All changes are relative to the ${timeText}.`;
@@ -684,6 +702,14 @@ function renderLeaderboardChart(data) {
           position: 'top',
           max,
           beginAtZero: true,
+          title: {
+            display: true,
+            text: `total ${scoreType}`,
+            color: textMuted,
+            font: {
+              weight: 'bold'
+            }
+          },
           grid: {
             color: border
           },
@@ -697,6 +723,14 @@ function renderLeaderboardChart(data) {
           position: 'bottom',
           max,
           beginAtZero: true,
+          title: {
+            display: true,
+            text: `total ${scoreType}`,
+            color: textMuted,
+            font: {
+              weight: 'bold'
+            }
+          },
           grid: {
             drawOnChartArea: false,
             color: border
