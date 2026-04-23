@@ -369,7 +369,7 @@ async function init() {
       loadTopGainers();
       loadLeaderboard();
       if (currentPlayer) {
-        loadPlayerProfile(currentPlayer.id);
+        loadPlayerProfile(currentPlayer.ign);
       }
     };
 
