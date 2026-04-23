@@ -71,7 +71,7 @@ export async function getLeaderboard(gameId: string, compareDays: number = 30) {
     ) cur
     FULL OUTER JOIN (
       SELECT player, score,
-             RANK() OVER (ORDER BY score DESC NULLS LAST) AS rk
+             ROW_NUMBER() OVER (ORDER BY score DESC NULLS LAST) AS rk
       FROM leaderboard_rows
       WHERE snapshot_id = ${pastSnapshot?.id ?? null}
     ) past ON cur.player = past.player
