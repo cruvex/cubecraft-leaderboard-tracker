@@ -477,7 +477,7 @@ function updateWarningBanner() {
   if (!currentGame || !warningText) return;
 
   const dateStr = TRACKING_START_DATES[currentGame.name] ?? "recently";
-  warningText.textContent = `Notice: Historical data is currently only available starting from ${dateStr}.`;
+  warningText.textContent = `Notice: Historical data for ${currentGame.displayName} is currently only available starting from ${dateStr}.`;
 }
 
 function updateLeaderboardDescription() {
