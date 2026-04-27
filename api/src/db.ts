@@ -172,13 +172,3 @@ export async function getUuidByIgn(ign: string): Promise<string | null> {
   if (!res || res.length === 0) return null;
   return res[0].player_uuid;
 }
-
-export async function checkUuidExists(uuid: string): Promise<boolean> {
-  const res = await Bun.sql`
-    SELECT 1
-    FROM ign_history
-    WHERE player_uuid = ${uuid}
-    LIMIT 1
-  `;
-  return !!(res && res.length > 0);
-}

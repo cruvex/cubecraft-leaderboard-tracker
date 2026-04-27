@@ -72,4 +72,4 @@ Bun.serve({
     },
 });
 
-console.log(`Dashboard server running at http://localhost:${PORT}`);
+console.log(`Dashboard server running at http://0.0.0.0:${PORT}`);
