@@ -29,11 +29,12 @@ let currentGame = undefined;
 let currentDays = 30;
 /** @type {{ id: string, ign: string, data: Object[] } | undefined} */
 let currentPlayer = undefined;
-const enabledGames = ["team_eggwars", "solo_skywars"];
+const enabledGames = ["team_eggwars", "solo_skywars", "free_for_all"];
 
 const TRACKING_START_DATES = {
   solo_skywars: "April 2nd, 2026",
   team_eggwars: "March 19th, 2026",
+  free_for_all: "April 27th, 2026",
 };
 
 const el = (id) => document.getElementById(id);
@@ -83,7 +84,7 @@ function renderTopGainers(data) {
       <tr>
         <th class="text-center">#</th>
         <th class="text-center">Player</th>
-        <th class="text-center">Wins</th>
+        <th class="text-center leaderboardScoreType">Wins</th>
       </tr>
     </thead>
     <tbody></tbody>
@@ -113,9 +114,9 @@ function renderTopGainers(data) {
     tbody.appendChild(tr);
     i++;
   });
-
   container.innerHTML = "";
   container.appendChild(table);
+  updateScoreTypeLabels();
 }
 
 function getStyle(name) {
@@ -263,7 +264,7 @@ async function loadPlayerProfile(idOrIgn) {
   el("displayCurrentScore").innerText = "---";
 
   const scoreType = currentGame?.scoreType || "Wins";
-  el("scoreLabel").innerText = `Total ${scoreType}`;
+  // updateLeaderboardDescription handles scoreType labels
 
   try {
     const scoreData = await apiFetch(`/player/${idOrIgn}/scores`);
@@ -281,6 +282,7 @@ async function loadPlayerProfile(idOrIgn) {
       const currentScore = scoreData.rows[scoreData.rows.length - 1].score;
       el("displayCurrentScore").innerText = currentScore.toLocaleString();
       renderChart(scoreData.rows, scoreData.ign, scoreType);
+      updateScoreTypeLabels();
     } else {
       el("displayGain7d").innerText = "0";
       el("displayGain30d").innerText = "0";
@@ -373,6 +375,7 @@ async function init() {
       currentGame = games.find(g => g.id === gameId) || null;
       if (currentPlayer) currentPlayer.data = null;
       updateWarningBanner();
+      updateLeaderboardDescription();
       updatePath();
       loadTopGainers();
       loadLeaderboard();
@@ -491,17 +494,21 @@ function updateWarningBanner() {
   warningText.textContent = `Notice: Historical data for ${currentGame.displayName} is currently only available starting from ${dateStr}.`;
 }
 
-function updateLeaderboardDescription() {
-  const rangeEl = el("leaderboardTimeRange");
-  const summaryTextEl = el("leaderboardSummaryText");
+function updateScoreTypeLabels() {
   const scoreTypeEls = document.querySelectorAll(".leaderboardScoreType");
-
-  if (!rangeEl) return;
-
   const scoreType = currentGame?.scoreType || "Wins";
   scoreTypeEls.forEach(el => {
     el.textContent = scoreType;
-  })
+  });
+}
+
+function updateLeaderboardDescription() {
+  const rangeEl = el("leaderboardTimeRange");
+  const summaryTextEl = el("leaderboardSummaryText");
+
+  updateScoreTypeLabels();
+
+  if (!rangeEl) return;
 
   const timeText = currentDays === 7 ? "last 7 days" : "last month";
   rangeEl.textContent = `All changes are relative to the ${timeText}.`;
@@ -689,7 +696,7 @@ function renderLeaderboardChart(data) {
               if (d.isNew) {
                 label += " (New Entry)";
               } else if (d.rankChange !== null && d.rankChange !== 0) {
-                label += ` (Rank Change: ${d.rankChange > 0 ? '+' : ''}${d.rankChange})`;
+                label += ` (Position Change: ${d.rankChange > 0 ? '+' : ''}${d.rankChange})`;
               }
               return label;
             }

@@ -2,7 +2,7 @@ import { z } from "zod";
 
 const cubepanionBaseUrl = "https://cubepanion.ameliah.art/api/v2";
 const mojangBaseUrl = "https://api.mojang.com";
-const trackedGames = ["team_eggwars", "solo_skywars"];
+const trackedGames = ["team_eggwars", "solo_skywars", "free_for_all"];
 
 async function main() {
   const games = await fetchGames();
@@ -68,15 +68,19 @@ async function resolvePlayerUUIDs(
 
   if (uncachedIgns.length > 0) {
     unknownPlayers = await fetchUnknownPlayers(uncachedIgns);
-    console.log(`${unknownPlayers.length} players fetched from Mojang`);
+    console.log(`Fetched ${unknownPlayers.length} from Mojang API`);
 
     if (unknownPlayers.length > 0) {
-      console.log(`Inserting ${unknownPlayers.length} players into DB cache`);
       await insertCachedPlayers(unknownPlayers);
-    } else {
-      console.log(
-        `Failed to fetch players from Mojang: ${uncachedIgns.join(", ")}`,
-      );
+    }
+
+    const notFound = uncachedIgns.filter(
+        ign => !unknownPlayers.some(p => p.ign === ign)
+    );
+
+    if (notFound.length > 0) {
+      console.log(`Not found: ${notFound.length}`);
+      console.log(`Unsuccessful players: ${notFound.join(", ")}`);
     }
   }
 
