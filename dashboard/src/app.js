@@ -264,7 +264,6 @@ async function loadPlayerProfile(idOrIgn) {
   el("displayCurrentScore").innerText = "---";
 
   const scoreType = currentGame?.scoreType || "Wins";
-  // updateLeaderboardDescription handles scoreType labels
 
   try {
     const scoreData = await apiFetch(`/player/${idOrIgn}/scores`);
