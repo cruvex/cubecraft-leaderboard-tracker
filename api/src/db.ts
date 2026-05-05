@@ -86,11 +86,6 @@ export async function getLeaderboard(gameId: string, compareDays: number = 30) {
   const currentRows = (allRows as any[]).filter(r => r.current_score != null);
   const departedRows = (allRows as any[]).filter(r => r.current_score == null);
 
-<<<<<<< HEAD
-=======
-  console.log(departedRows);
-
->>>>>>> edcbb90 (WIP: Leaderboard position changes)
   const rows = currentRows.map((r, i) => {
     const currentRank = i + 1;
     const pastRank: number | null = r.past_rank ? Number(r.past_rank) : null;
@@ -176,4 +171,22 @@ export async function getUuidByIgn(ign: string): Promise<string | null> {
   `;
   if (!res || res.length === 0) return null;
   return res[0].player_uuid;
+}
+
+export async function searchPlayerIgns(query: string): Promise<string[]> {
+  const contains = `%${query}%`;
+  const starts = `${query}%`;
+  const res = await Bun.sql`
+    SELECT player_ign FROM (
+      SELECT DISTINCT ON (player_uuid) player_ign
+      FROM public.ign_history
+      WHERE player_ign ILIKE ${contains}
+      ORDER BY player_uuid, id DESC
+    ) sub
+    ORDER BY
+      CASE WHEN player_ign ILIKE ${starts} THEN 0 ELSE 1 END,
+      player_ign
+    LIMIT 10
+  `;
+  return (res || []).map((r: any) => r.player_ign);
 }

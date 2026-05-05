@@ -1,4 +1,4 @@
-import { getUuidByIgn, getTopGainers, getPlayerScores, getLeaderboard } from "./db";
+import { getUuidByIgn, getTopGainers, getPlayerScores, getLeaderboard, searchPlayerIgns } from "./db";
 import { fetchGames } from "./cubepanion";
 
 const PORT = process.env.PORT ? Number(process.env.PORT) : 4000;
@@ -50,6 +50,14 @@ async function handleGames() {
     return jsonResponse(games);
 }
 
+async function handleSearchPlayers(req: Request) {
+    const url = new URL(req.url);
+    const q = url.searchParams.get("q")?.trim() ?? "";
+    if (q.length < 2) return jsonResponse([]);
+    const results = await searchPlayerIgns(q);
+    return jsonResponse(results);
+}
+
 async function handleLeaderboard (req: Request, params: { gameId: string })  {
     const url = new URL(req.url);
     const days = Number(url.searchParams.get("days") || 30);
@@ -66,6 +74,7 @@ Bun.serve({
         "/api/games/:gameId/player/:id": (req) => handlePlayerScores(req, req.params as { gameId: string, id: string }),
         "/api/games": handleGames,
         "/api/games/:gameId/leaderboard": (req) => handleLeaderboard(req, req.params as { gameId: string }),
+        "/api/search/players": handleSearchPlayers,
     },
     async fetch(req: Request) {
         return new Response("Not found", { status: 404 });

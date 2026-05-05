@@ -29,6 +29,7 @@ let currentGame = undefined;
 let currentDays = 30;
 /** @type {{ id: string, ign: string, data: Object[] } | undefined} */
 let currentPlayer = undefined;
+let autocompleteSelectedIndex = -1;
 const enabledGames = ["team_eggwars", "solo_skywars", "free_for_all"];
 
 const TRACKING_START_DATES = {
@@ -299,8 +300,42 @@ async function loadPlayerProfile(idOrIgn) {
   }
 }
 
+function showDropdown(items) {
+  const dropdown = el("playerSearchDropdown");
+  dropdown.innerHTML = "";
+  autocompleteSelectedIndex = -1;
+  if (!items.length) {
+    dropdown.hidden = true;
+    return;
+  }
+  items.forEach((ign) => {
+    const li = document.createElement("li");
+    li.textContent = ign;
+    li.addEventListener("mousedown", (e) => {
+      e.preventDefault();
+      el("playerSearch").value = ign;
+      dropdown.hidden = true;
+      autocompleteSelectedIndex = -1;
+      loadPlayerProfile(ign);
+    });
+    dropdown.appendChild(li);
+  });
+  dropdown.hidden = false;
+}
+
+function hideDropdown() {
+  el("playerSearchDropdown").hidden = true;
+  autocompleteSelectedIndex = -1;
+}
+
+function updateDropdownHighlight() {
+  const items = el("playerSearchDropdown").querySelectorAll("li");
+  items.forEach((li, i) => li.classList.toggle("active", i === autocompleteSelectedIndex));
+}
+
 function resetSearch() {
   updatePath();
+  hideDropdown();
 
   el("errorState").style.display = "none";
   el("playerProfile").style.display = "none";
@@ -419,17 +454,73 @@ async function init() {
     console.error("Initialization failed", err);
   }
 
+  let autocompleteTimeout = null;
+
   el("loadPlayerBtn").onclick = () => {
     const query = el("playerSearch").value.trim();
-    if (query) loadPlayerProfile(query);
+    if (query) {
+      hideDropdown();
+      loadPlayerProfile(query);
+    }
   };
 
   el("playerSearch").onkeyup = (e) => {
     if (e.key === "Enter") {
-      const query = el("playerSearch").value.trim();
-      if (query) loadPlayerProfile(query);
+      const dropdown = el("playerSearchDropdown");
+      const items = dropdown.querySelectorAll("li");
+      if (!dropdown.hidden && autocompleteSelectedIndex >= 0 && items[autocompleteSelectedIndex]) {
+        const ign = items[autocompleteSelectedIndex].textContent;
+        el("playerSearch").value = ign;
+        hideDropdown();
+        loadPlayerProfile(ign);
+      } else {
+        const query = el("playerSearch").value.trim();
+        if (query) {
+          hideDropdown();
+          loadPlayerProfile(query);
+        }
+      }
     }
   };
+
+  el("playerSearch").addEventListener("input", () => {
+    clearTimeout(autocompleteTimeout);
+    const q = el("playerSearch").value.trim();
+    if (q.length < 2) {
+      hideDropdown();
+      return;
+    }
+    autocompleteTimeout = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/search/players?q=${encodeURIComponent(q)}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        showDropdown(data);
+      } catch {}
+    }, 250);
+  });
+
+  el("playerSearch").addEventListener("keydown", (e) => {
+    const dropdown = el("playerSearchDropdown");
+    if (dropdown.hidden) return;
+    const items = dropdown.querySelectorAll("li");
+    if (!items.length) return;
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      autocompleteSelectedIndex = Math.min(autocompleteSelectedIndex + 1, items.length - 1);
+      updateDropdownHighlight();
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      autocompleteSelectedIndex = Math.max(autocompleteSelectedIndex - 1, -1);
+      updateDropdownHighlight();
+    } else if (e.key === "Escape") {
+      hideDropdown();
+    }
+  });
+
+  el("playerSearch").addEventListener("blur", () => {
+    setTimeout(hideDropdown, 150);
+  });
 
   // Listen for theme changes to update chart colors
   const observer = new MutationObserver((mutations) => {

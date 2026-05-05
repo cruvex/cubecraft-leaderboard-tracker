@@ -65,7 +65,10 @@
         <div class="card">
           <div class="card-title">Player Search</div>
           <div class="input-group">
-            <input id="playerSearch" type="text" placeholder="Enter Player IGN or UUID..." />
+            <div class="search-wrapper">
+              <input id="playerSearch" type="text" placeholder="Enter Player IGN or UUID..." autocomplete="off" />
+              <ul id="playerSearchDropdown" class="search-dropdown" hidden></ul>
+            </div>
             <button id="loadPlayerBtn">View Stats</button>
           </div>
 
