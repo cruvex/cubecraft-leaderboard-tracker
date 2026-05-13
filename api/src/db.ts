@@ -128,7 +128,7 @@ export async function getPlayerScores(uuid: string, days = 30, gameId: number) {
   const ign = ignRes[0].player_ign;
 
   const scores = await Bun.sql`
-    SELECT ls.timestamp, lr.score
+    SELECT ls.timestamp, lr.score, lr.position
     FROM leaderboard_rows lr
     JOIN leaderboard_snapshots ls ON lr.snapshot_id = ls.id
     WHERE lr.player = ${uuid}
@@ -142,6 +142,7 @@ export async function getPlayerScores(uuid: string, days = 30, gameId: number) {
   const rows = scores.map((r: any) => ({
     timestamp: r.timestamp instanceof Date ? r.timestamp.toISOString() : String(r.timestamp),
     score: r.score == null ? 0 : Number(r.score),
+    position: r.position == null ? 0 : Number(r.position),
   }));
 
   // Calculate 7d and 30d gains

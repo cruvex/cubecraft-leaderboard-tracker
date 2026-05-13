@@ -74,21 +74,29 @@
 
           <div id="playerProfile" style="display: none;">
             <div class="player-header">
-              <span id="displayIgn" class="player-name">---</span>
-              <span id="displayUuid" class="player-uuid">---</span>
+              <div class="player-info">
+                <span id="displayIgn" class="player-name">---</span>
+                <span id="displayUuid" class="player-uuid">---</span>
+              </div>
+              <div class="chart-controls">
+                <div class="toggle-group" id="displayModeToggle">
+                  <button class="toggle-btn active" data-mode="wins">Wins</button>
+                  <button class="toggle-btn" data-mode="position">Positions</button>
+                </div>
+              </div>
             </div>
 
             <div class="stats-grid">
               <div class="stat-card">
-                <div class="stat-label">7D <span class="leaderboardScoreType">Wins</span></div>
+                <div class="stat-label">7D <span class="gainTypeLabel">Gain</span></div>
                 <div id="displayGain7d" class="stat-value">0</div>
               </div>
               <div class="stat-card">
-                <div class="stat-label">30D <span class="leaderboardScoreType">Wins</span></div>
+                <div class="stat-label">30D <span class="gainTypeLabel">Gain</span></div>
                 <div id="displayGain30d" class="stat-value">0</div>
               </div>
               <div class="stat-card">
-                <div id="scoreLabel" class="stat-label">Total <span class="leaderboardScoreType">Wins</span></div>
+                <div id="scoreLabel" class="stat-label"><span class="currentTypeLabel">Value</span></div>
                 <div id="displayCurrentScore" class="stat-value">---</div>
               </div>
             </div>

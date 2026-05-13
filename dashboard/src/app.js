@@ -27,6 +27,7 @@ let leaderboardChart = null;
 let games = [];
 let currentGame = undefined;
 let currentDays = 30;
+let displayMode = "wins";
 /** @type {{ id: string, ign: string, data: Object[] } | undefined} */
 let currentPlayer = undefined;
 let autocompleteSelectedIndex = -1;
@@ -134,7 +135,7 @@ function renderChart(rows, ign, scoreType = "Score") {
   const chartData = rows
     .map(r => ({
       x: new Date(r.timestamp).getTime(),
-      y: r.score
+      y: displayMode === "wins" ? r.score : r.position
     }))
     .filter(d => d.x >= minTime);
 
@@ -154,11 +155,13 @@ function renderChart(rows, ign, scoreType = "Score") {
   const text = getStyle('--text');
   const cardBg = getStyle('--card-bg');
 
+  const label = displayMode === "wins" ? scoreType : "Position";
+
   chart = new Chart(ctx, {
     type: "line",
     data: {
       datasets: [{
-        label: `${scoreType}`,
+        label: label,
         data: chartData,
         borderColor: primary,
         backgroundColor: `${primary}1a`,
@@ -171,6 +174,7 @@ function renderChart(rows, ign, scoreType = "Score") {
       }]
     },
     options: {
+      animation: false,
       responsive: true,
       maintainAspectRatio: false,
       layout: {
@@ -196,6 +200,16 @@ function renderChart(rows, ign, scoreType = "Score") {
             title: (tooltipItems) => {
               const date = new Date(tooltipItems[0].parsed.x);
               return date.toLocaleString();
+            },
+            label: (context) => {
+              let label = context.dataset.label || '';
+              if (label) {
+                label += ': ';
+              }
+              if (context.parsed.y !== null) {
+                label += context.parsed.y.toLocaleString();
+              }
+              return label;
             }
           }
         }
@@ -217,12 +231,13 @@ function renderChart(rows, ign, scoreType = "Score") {
         y: {
           title: {
             display: true,
-            text: scoreType,
+            text: label,
             color: textMuted,
             font: {
               weight: 'bold'
             }
           },
+          reverse: displayMode === "position",
           beginAtZero: false,
           suggestedMin: minVal - padding,
           suggestedMax: maxVal + padding,
@@ -250,8 +265,15 @@ async function updatePath() {
   window.history.replaceState({}, "", newPath);
 }
 
-async function loadPlayerProfile(idOrIgn) {
+async function loadPlayerProfile(idOrIgn, forceFetch = false) {
   if (!idOrIgn) return;
+
+  const scoreType = currentGame?.scoreType || "Wins";
+
+  if (!forceFetch && currentPlayer && (currentPlayer.id === idOrIgn || currentPlayer.ign === idOrIgn) && currentPlayer.data) {
+    renderPlayerProfile(currentPlayer.data, scoreType);
+    return;
+  }
 
   el("emptyState").style.display = "none";
   el("errorState").style.display = "none";
@@ -264,31 +286,12 @@ async function loadPlayerProfile(idOrIgn) {
   el("displayGain30d").innerText = "---";
   el("displayCurrentScore").innerText = "---";
 
-  const scoreType = currentGame?.scoreType || "Wins";
-
   try {
     const scoreData = await apiFetch(`/player/${idOrIgn}/scores`);
     currentPlayer = { id: scoreData.player, ign: scoreData.ign, data: scoreData };
 
     await updatePath();
-
-    el("displayIgn").innerText = scoreData.ign;
-    el("displayUuid").innerText = formatUuid(scoreData.player);
-
-    if (scoreData.rows?.length) {
-      el("displayGain7d").innerText = scoreData.gain7d.toLocaleString();
-      el("displayGain30d").innerText = scoreData.gain30d.toLocaleString();
-
-      const currentScore = scoreData.rows[scoreData.rows.length - 1].score;
-      el("displayCurrentScore").innerText = currentScore.toLocaleString();
-      renderChart(scoreData.rows, scoreData.ign, scoreType);
-      updateScoreTypeLabels();
-    } else {
-      el("displayGain7d").innerText = "0";
-      el("displayGain30d").innerText = "0";
-      el("displayCurrentScore").innerText = "No data";
-      if (chart) chart.destroy();
-    }
+    renderPlayerProfile(scoreData, scoreType);
   } catch (err) {
     console.error(err);
     el("playerProfile").style.display = "none";
@@ -297,6 +300,60 @@ async function loadPlayerProfile(idOrIgn) {
     el("errorMessage").innerText = `Player '${idOrIgn}' is not on the ${currentGame?.displayName || "selected game"} leaderboard.`;
   } finally {
     el("chartLoading").style.display = "none";
+  }
+}
+
+function renderPlayerProfile(scoreData, scoreType) {
+  el("emptyState").style.display = "none";
+  el("errorState").style.display = "none";
+  el("playerProfile").style.display = "block";
+
+  el("displayIgn").innerText = scoreData.ign;
+  el("displayUuid").innerText = formatUuid(scoreData.player);
+
+  const setGainEl = (id, value, showPlus) => {
+    const elem = el(id);
+    elem.innerText = (showPlus && value > 0 ? "+" : "") + value.toLocaleString();
+    elem.classList.remove("text-positive", "text-negative");
+    if (value > 0) elem.classList.add("text-positive");
+    else if (value < 0) elem.classList.add("text-negative");
+  };
+
+  if (scoreData.rows?.length) {
+    if (displayMode === "wins") {
+      setGainEl("displayGain7d", scoreData.gain7d, true);
+      setGainEl("displayGain30d", scoreData.gain30d, true);
+      const currentScore = scoreData.rows[scoreData.rows.length - 1].score;
+      el("displayCurrentScore").innerText = currentScore.toLocaleString();
+    } else {
+      // Position gains
+      const now = Date.now();
+      const dayMs = 24 * 60 * 60 * 1000;
+      const rows = scoreData.rows;
+      const currentPos = rows[rows.length - 1].position;
+
+      const getGain = (days) => {
+        const targetTime = now - (days * dayMs);
+        const oldRow = rows.find(r => new Date(r.timestamp).getTime() >= targetTime);
+        if (!oldRow) return 0;
+        return oldRow.position - currentPos; // If old was 10 and current is 5, gain is +5
+      };
+
+      const gain7d = getGain(7);
+      const gain30d = getGain(30);
+
+      setGainEl("displayGain7d", gain7d, true);
+      setGainEl("displayGain30d", gain30d, true);
+      el("displayCurrentScore").innerText = "#" + currentPos.toLocaleString();
+    }
+
+    renderChart(scoreData.rows, scoreData.ign, scoreType);
+    updateScoreTypeLabels();
+  } else {
+    el("displayGain7d").innerText = "0";
+    el("displayGain30d").innerText = "0";
+    el("displayCurrentScore").innerText = "No data";
+    if (chart) chart.destroy();
   }
 }
 
@@ -414,7 +471,7 @@ async function init() {
       loadTopGainers();
       loadLeaderboard();
       if (currentPlayer) {
-        loadPlayerProfile(currentPlayer.ign);
+        loadPlayerProfile(currentPlayer.ign, true);
       }
     };
 
@@ -461,6 +518,19 @@ async function init() {
     if (query) {
       hideDropdown();
       loadPlayerProfile(query);
+    }
+  };
+
+  el("displayModeToggle").onclick = (e) => {
+    const btn = e.target.closest(".toggle-btn");
+    if (!btn || btn.classList.contains("active")) return;
+
+    el("displayModeToggle").querySelectorAll(".toggle-btn").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    displayMode = btn.dataset.mode;
+
+    if (currentPlayer && currentPlayer.data) {
+      loadPlayerProfile(currentPlayer.ign);
     }
   };
 
@@ -589,6 +659,16 @@ function updateScoreTypeLabels() {
   const scoreType = currentGame?.scoreType || "Wins";
   scoreTypeEls.forEach(el => {
     el.textContent = scoreType;
+  });
+
+  const gainTypeEls = document.querySelectorAll(".gainTypeLabel");
+  gainTypeEls.forEach(el => {
+    el.textContent = displayMode === "wins" ? scoreType : "Positions";
+  });
+
+  const currentTypeEls = document.querySelectorAll(".currentTypeLabel");
+  currentTypeEls.forEach(el => {
+    el.textContent = displayMode === "wins" ? `Total ${scoreType}` : "Position";
   });
 }
 
