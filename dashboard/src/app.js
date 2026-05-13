@@ -111,7 +111,7 @@ function renderTopGainers(data) {
     tr.onclick = () => {
       if (currentPlayer && (currentPlayer.id === row.player)) return;
       loadPlayerProfile(row.player);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      scrollToPlayerProfile();
     };
     tbody.appendChild(tr);
     i++;
@@ -157,6 +157,9 @@ function renderChart(rows, ign, scoreType = "Score") {
 
   const label = displayMode === "wins" ? scoreType : "Position";
 
+  const isMobile = window.innerWidth <= 600;
+  const isSmall = window.innerWidth <= 900;
+
   chart = new Chart(ctx, {
     type: "line",
     data: {
@@ -167,10 +170,10 @@ function renderChart(rows, ign, scoreType = "Score") {
         backgroundColor: `${primary}1a`,
         tension: 0,
         pointRadius: 3,
-        pointHoverRadius: 6,
+        pointHoverRadius: isMobile ? 4 : 6,
         pointBackgroundColor: primary,
         clip: false,
-        borderWidth: 3
+        borderWidth: isMobile ? 2 : 3
       }]
     },
     options: {
@@ -179,8 +182,8 @@ function renderChart(rows, ign, scoreType = "Score") {
       maintainAspectRatio: false,
       layout: {
         padding: {
-          left: 5,
-          right: 5
+          left: isSmall ? 2 : 5,
+          right: isSmall ? 2 : 5
         }
       },
       plugins: {
@@ -191,7 +194,7 @@ function renderChart(rows, ign, scoreType = "Score") {
           bodyColor: text,
           borderColor: border,
           borderWidth: 1,
-          padding: 12,
+          padding: isMobile ? 8 : 12,
           boxPadding: 4,
           usePointStyle: true,
           mode: 'index',
@@ -225,12 +228,13 @@ function renderChart(rows, ign, scoreType = "Score") {
             autoSkip: true,
             stepSize: 24 * 60 * 60 * 1000,
             color: textMuted,
+            font: isMobile ? { size: 10 } : undefined,
             callback: (val) => new Date(val).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
           }
         },
         y: {
           title: {
-            display: true,
+            display: !isMobile,
             text: label,
             color: textMuted,
             font: {
@@ -247,6 +251,7 @@ function renderChart(rows, ign, scoreType = "Score") {
           ticks: {
             precision: 0,
             color: textMuted,
+            font: isMobile ? { size: 10 } : undefined,
             callback: (val) => val.toLocaleString()
           }
         }
@@ -263,6 +268,14 @@ async function updatePath() {
     newPath += `/player/${currentPlayer.ign}`;
   }
   window.history.replaceState({}, "", newPath);
+}
+
+function scrollToPlayerProfile() {
+  if (window.innerWidth <= 900) {
+    document.querySelector('main').scrollIntoView({ behavior: 'smooth' });
+  } else {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
 }
 
 async function loadPlayerProfile(idOrIgn, forceFetch = false) {
@@ -786,10 +799,12 @@ function renderLeaderboardChart(data) {
   const text = getStyle('--text');
   const cardBg = getStyle('--card-bg');
 
+  const isMobile = window.innerWidth <= 700;
+
   leaderboardChart = new Chart(ctx, {
     type: 'bar',
     data: {
-      labels: rows.map((d, i) => `${i + 1}. ${d.ign}`),
+      labels: rows.map((d, i) => isMobile ? `${i + 1}` : `${i + 1}. ${d.ign}`),
       datasets: [{
         label: scoreType,
         data: rows.map(d => d.score),
@@ -798,50 +813,74 @@ function renderLeaderboardChart(data) {
         borderWidth: 0,
         borderRadius: 5,
         hoverBackgroundColor: "#2563eb",
-        xAxisID: 'xBottom'
+        xAxisID: 'xBottom',
+        barThickness: isMobile ? 12 : undefined
       }]
     },
     plugins: [{
-      id: 'rankChangeLabels',
+      id: 'customLabels',
       afterDraw: (chart) => {
-        const { ctx, scales: { y } } = chart;
-        const ticks = y.getTicks();
+        const { ctx: c, scales: { y }, chartArea } = chart;
+        c.save();
 
-        ctx.save();
-        ctx.font = 'bold 12px sans-serif';
-        ctx.textAlign = 'right';
-        ctx.textBaseline = 'middle';
+        if (isMobile) {
+          c.font = 'bold 10px Inter, system-ui, sans-serif';
+          c.textBaseline = 'bottom';
+          c.textAlign = 'left';
+          c.fillStyle = text;
 
-        ticks.forEach((tick, index) => {
-          const row = rows[index];
-          if (!row) return;
+          rows.forEach((row, index) => {
+            const yCenter = y.getPixelForValue(index);
+            const yText = yCenter - 8;
 
-          let text = '';
-          let color = '';
+            let rankText = '';
+            let rankColor = '';
+            if (row.isNew) {
+              rankText = 'NEW';
+              rankColor = '#3b82f6';
+            } else if (row.rankChange !== null && row.rankChange !== 0) {
+              rankText = (row.rankChange > 0 ? '+' : '') + row.rankChange;
+              rankColor = row.rankChange > 0 ? '#10b981' : '#ef4444';
+            }
 
-          if (row.isNew) {
-            text = 'NEW';
-            color = '#3b82f6';
-          } else if (row.rankChange !== null && row.rankChange !== 0) {
-            text = (row.rankChange > 0 ? '+' : '') + row.rankChange;
-            color = row.rankChange > 0 ? '#10b981' : '#ef4444';
-          }
+            let xIgn = chartArea.left;
+            if (rankText) {
+              c.fillStyle = rankColor;
+              c.textAlign = 'left';
+              c.fillText(rankText, chartArea.left, yText);
+              xIgn += c.measureText(rankText).width + 4;
+            }
 
-          if (text) {
-            const yPos = y.getPixelForTick(index);
-            // Draw it slightly to the left of the player name (which is aligned 'far')
-            // Or maybe on the right side of the labels?
-            // Since y.ticks.crossAlign is 'far', the labels are right-aligned against the axis.
-            // We want the rank change to be even further right or left?
-            // "align the position changes to the right" -> likely means aligned in a column.
+            c.fillStyle = text;
+            c.textAlign = 'left';
+            c.fillText(row.ign, xIgn, yText);
+          });
+        } else {
+          const ticks = y.getTicks();
+          c.font = 'bold 12px sans-serif';
+          c.textAlign = 'right';
+          c.textBaseline = 'middle';
 
-            // Align rank change to the right of the label area (near the axis line)
-            const xPos = y.right - 5;
-            ctx.fillStyle = color;
-            ctx.fillText(text, xPos, yPos);
-          }
-        });
-        ctx.restore();
+          ticks.forEach((tick, index) => {
+            const row = rows[index];
+            if (!row) return;
+            let rankText = '';
+            let color = '';
+            if (row.isNew) {
+              rankText = 'NEW';
+              color = '#3b82f6';
+            } else if (row.rankChange !== null && row.rankChange !== 0) {
+              rankText = (row.rankChange > 0 ? '+' : '') + row.rankChange;
+              color = row.rankChange > 0 ? '#10b981' : '#ef4444';
+            }
+            if (rankText) {
+              c.fillStyle = color;
+              c.fillText(rankText, y.right - 5, y.getPixelForTick(index));
+            }
+          });
+        }
+
+        c.restore();
       }
     }],
     options: {
@@ -856,7 +895,7 @@ function renderLeaderboardChart(data) {
           bodyColor: text,
           borderColor: border,
           borderWidth: 1,
-          padding: 12,
+          padding: isMobile ? 8 : 12,
           boxPadding: 4,
           usePointStyle: true,
           callbacks: {
@@ -869,7 +908,8 @@ function renderLeaderboardChart(data) {
                 label += ` (Position Change: ${d.rankChange > 0 ? '+' : ''}${d.rankChange})`;
               }
               return label;
-            }
+            },
+            title: (items) => isMobile ? rows[items[0].dataIndex]?.ign : undefined
           }
         }
       },
@@ -880,18 +920,15 @@ function renderLeaderboardChart(data) {
           max,
           beginAtZero: true,
           title: {
-            display: true,
+            display: !isMobile,
             text: `total ${scoreType}`,
             color: textMuted,
-            font: {
-              weight: 'bold'
-            }
+            font: { weight: 'bold' }
           },
-          grid: {
-            color: border
-          },
+          grid: { color: border },
           ticks: {
             color: textMuted,
+            font: isMobile ? { size: 10 } : undefined,
             callback: (val) => val.toLocaleString()
           }
         },
@@ -901,33 +938,26 @@ function renderLeaderboardChart(data) {
           max,
           beginAtZero: true,
           title: {
-            display: true,
+            display: !isMobile,
             text: `total ${scoreType}`,
             color: textMuted,
-            font: {
-              weight: 'bold'
-            }
+            font: { weight: 'bold' }
           },
-          grid: {
-            drawOnChartArea: false,
-            color: border
-          },
+          grid: { drawOnChartArea: false, color: border },
           ticks: {
             color: textMuted,
+            font: isMobile ? { size: 10 } : undefined,
             callback: (val) => val.toLocaleString()
           }
         },
         y: {
-          grid: {
-            display: false,
-            drawBorder: false
-          },
+          grid: { display: false, drawBorder: false },
           ticks: {
             autoSkip: false,
-            padding: 15,
+            padding: isMobile ? 4 : 15,
             crossAlign: 'far',
             color: textMuted,
-            font: { size: 12 }
+            font: { size: isMobile ? 10 : 12 }
           }
         }
       },
@@ -936,14 +966,14 @@ function renderLeaderboardChart(data) {
           const index = elements[0].index;
           const player = rows[index];
           loadPlayerProfile(player.player);
-          window.scrollTo({ top: 0, behavior: 'smooth' });
+          scrollToPlayerProfile();
         }
       }
     }
   });
 
   // Dynamically adjust height based on number of players
-  const chartHeight = Math.max(400, rows.length * 25);
+  const chartHeight = Math.max(400, rows.length * (isMobile ? 32 : 25));
   el("leaderboardChart").parentElement.style.height = `${chartHeight}px`;
 }
 
