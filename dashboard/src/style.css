@@ -544,8 +544,8 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
    Top Gainers
    ================================================ */
 #topGainersCard {
-  max-height: 727px;
-  min-height: 727px;
+  max-height: 728px;
+  min-height: 728px;
 }
 
 .sticky-sidebar {
