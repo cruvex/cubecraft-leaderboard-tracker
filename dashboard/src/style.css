@@ -477,7 +477,7 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
 .text-negative { color: #ef4444; }
 
 #chartContainer {
-  height: 340px;
+  height: 400px;
   position: relative;
   width: 100%;
   overflow: hidden;
