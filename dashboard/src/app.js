@@ -33,12 +33,6 @@ let currentPlayer = undefined;
 let autocompleteSelectedIndex = -1;
 const enabledGames = ["team_eggwars", "solo_skywars", "free_for_all"];
 
-const TRACKING_START_DATES = {
-  solo_skywars: "April 2nd, 2026",
-  team_eggwars: "March 19th, 2026",
-  free_for_all: "April 27th, 2026",
-};
-
 const el = (id) => document.getElementById(id);
 
 async function apiFetch(endpoint) {
@@ -478,7 +472,6 @@ async function init() {
       const gameId = Number(e.target.value);
       currentGame = games.find(g => g.id === gameId) || null;
       if (currentPlayer) currentPlayer.data = null;
-      updateWarningBanner();
       updateLeaderboardDescription();
       updatePath();
       loadTopGainers();
@@ -509,7 +502,6 @@ async function init() {
       }
     };
 
-    updateWarningBanner();
     updateLeaderboardDescription();
 
     await Promise.all([
@@ -657,14 +649,6 @@ function updateAllChartsTheme() {
 
     leaderboardChart.update('none');
   }
-}
-
-function updateWarningBanner() {
-  const warningText = el("warningText");
-  if (!currentGame || !warningText) return;
-
-  const dateStr = TRACKING_START_DATES[currentGame.name] ?? "recently";
-  warningText.textContent = `Notice: Historical data for ${currentGame.displayName} is currently only available starting from ${dateStr}.`;
 }
 
 function updateScoreTypeLabels() {
