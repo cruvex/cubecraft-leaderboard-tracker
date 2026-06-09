@@ -11,6 +11,34 @@ export const state = {
   /** @type {{ id: string, ign: string, data: any } | undefined} */
   currentPlayer: undefined,
 
+  // --- "Wins over time" comparison chart (independent of the global controls) ---
+  /**
+   * Players shown in the comparison chart. `null` means "use the default"
+   * (top gainers); a list of UUIDs/IGNs means a custom selection. Mutating this
+   * and calling loadComparisonChart() is the seam for a future add/remove
+   * players feature.
+   * @type {string[] | null}
+   */
+  comparisonPlayerIds: null,
+  /** Timeframe (in days) for the comparison chart, independent of the global toggle. */
+  comparisonDays: 30,
+  /** "total" = absolute score; "gained" = rebased to 0 at each player's earliest in-window point. */
+  comparisonMode: "total",
+  /** Last-fetched comparison series, cached so the mode toggle can re-render without refetching. */
+  comparisonData: [],
+  /**
+   * The ign→colour mapping of the lines actually drawn, published by the chart
+   * so the selection pills can match line colours.
+   * @type {{ ign: string, color: string }[]}
+   */
+  comparisonSeries: [],
+  /**
+   * Lowercased IGNs whose lines are toggled off (hidden but still selected).
+   * Transient view state — not persisted.
+   * @type {Set<string>}
+   */
+  comparisonHidden: new Set(),
+
   // --- Search autocomplete ---
   autocompleteSelectedIndex: -1,
 };

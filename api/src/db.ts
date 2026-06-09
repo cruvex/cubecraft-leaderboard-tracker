@@ -34,6 +34,83 @@ export async function getTopGainers(days = 30, gameId: number) {
   }));
 }
 
+/**
+ * Batch-fetch the score-over-time series for an explicit set of players.
+ * This is the generic primitive behind the "wins over time" comparison chart;
+ * callers decide which players to include (see getTopGainersHistory for the
+ * default top-gainers seed). The returned array preserves the order of `uuids`,
+ * and players with no data in the window are omitted.
+ */
+export async function getPlayersHistory(uuids: string[], days = 30, gameId: number) {
+  if (!uuids.length) return [];
+
+  const res = await Bun.sql`
+    WITH player_igns AS (
+      SELECT DISTINCT ON (player_uuid) player_uuid, player_ign
+      FROM ign_history
+      ORDER BY player_uuid, id DESC
+    )
+    SELECT
+      lr.player      AS uuid,
+      pi.player_ign  AS ign,
+      ls.timestamp,
+      lr.score
+    FROM leaderboard_rows lr
+    JOIN leaderboard_snapshots ls ON lr.snapshot_id = ls.id
+    LEFT JOIN player_igns pi ON pi.player_uuid = lr.player
+    WHERE lr.player IN ${Bun.sql(uuids)}
+      AND ls.game_id = ${gameId}
+      AND ls.timestamp >= NOW() - CAST(${days + " days"} AS INTERVAL)
+    ORDER BY ls.timestamp
+  `;
+
+  const seriesByUuid = new Map<string, { timestamp: string; score: number }[]>();
+  const ignByUuid = new Map<string, string>();
+  for (const r of (res || []) as any[]) {
+    let series = seriesByUuid.get(r.uuid);
+    if (!series) {
+      series = [];
+      seriesByUuid.set(r.uuid, series);
+    }
+    series.push({
+      timestamp: r.timestamp instanceof Date ? r.timestamp.toISOString() : String(r.timestamp),
+      score: r.score == null ? 0 : Number(r.score),
+    });
+    if (r.ign) ignByUuid.set(r.uuid, r.ign);
+  }
+
+  // Preserve the requested order so the chart's colour/legend assignment is stable.
+  return uuids
+    .filter((uuid) => seriesByUuid.has(uuid))
+    .map((uuid) => ({
+      player: uuid,
+      ign: ignByUuid.get(uuid) || "Unknown",
+      rows: seriesByUuid.get(uuid)!,
+    }));
+}
+
+/**
+ * Resolve the top-N gainers in the window to a player list, then return their
+ * histories via getPlayersHistory. This is the default seed for the comparison
+ * chart; the chart itself is not bound to "gainers".
+ */
+export async function getTopGainersHistory(days = 30, gameId: number, limit = 10) {
+  const gainers = await Bun.sql`
+    SELECT lr.player AS uuid
+    FROM leaderboard_rows lr
+    JOIN leaderboard_snapshots ls ON lr.snapshot_id = ls.id
+    WHERE ls.timestamp >= NOW() - CAST(${days + " days"} AS INTERVAL)
+      AND ls.game_id = ${gameId}
+    GROUP BY lr.player
+    HAVING MAX(lr.score) - MIN(lr.score) > 0
+    ORDER BY MAX(lr.score) - MIN(lr.score) DESC
+    LIMIT ${limit}
+  `;
+
+  const uuids = (gainers || []).map((r: any) => r.uuid);
+  return getPlayersHistory(uuids, days, gameId);
+}
+
 export async function getLeaderboard(gameId: string, compareDays: number = 30) {
   const formatTimestamp = (ts: unknown): string | null =>
       ts instanceof Date ? ts.toISOString() : ts ? String(ts) : null;

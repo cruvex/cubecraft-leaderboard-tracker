@@ -9,7 +9,14 @@ import { loadTopGainers } from "./topGainers.js";
 import { loadPlayerProfile } from "./playerProfile.js";
 import { renderPlayerChart, updatePlayerChartTheme } from "./charts/playerChart.js";
 import { loadLeaderboard, updateLeaderboardChartTheme } from "./charts/leaderboardChart.js";
+import {
+  loadComparisonChart,
+  renderComparisonChart,
+  updateComparisonChartTheme,
+} from "./charts/comparisonChart.js";
 import { setupSearch } from "./search.js";
+import { setupComparisonSelection } from "./comparisonSelection.js";
+import { loadComparisonState, saveComparisonState } from "./comparisonStore.js";
 
 async function init() {
   const { gameName: initialGameName, playerIgn: initialPlayerIgn, redirect } = parseInitialPath();
@@ -17,6 +24,9 @@ async function init() {
     window.location.href = "/";
     return;
   }
+
+  // Restore the persisted comparison view before any chart loads.
+  loadComparisonState();
 
   try {
     const activeBtn = el("daysToggle").querySelector(".toggle-btn.active");
@@ -56,6 +66,7 @@ async function init() {
       updateLeaderboardDescription();
       updatePath();
       loadTopGainers();
+      loadComparisonChart(state.comparisonPlayerIds);
       loadLeaderboard();
       if (state.currentPlayer) {
         loadPlayerProfile(state.currentPlayer.ign, true);
@@ -82,10 +93,37 @@ async function init() {
       }
     };
 
+    // Comparison chart controls (independent timeframe + total/gained mode).
+    // Sync the controls to the restored state first.
+    el("comparisonTimeframe").value = String(state.comparisonDays);
+    el("comparisonModeToggle")
+      .querySelectorAll(".toggle-btn")
+      .forEach((b) => b.classList.toggle("active", b.dataset.mode === state.comparisonMode));
+
+    el("comparisonTimeframe").onchange = (e) => {
+      state.comparisonDays = Number(e.target.value);
+      saveComparisonState();
+      loadComparisonChart(state.comparisonPlayerIds);
+    };
+
+    el("comparisonModeToggle").onclick = (e) => {
+      const btn = e.target.closest(".toggle-btn");
+      if (!btn || btn.classList.contains("active")) return;
+      el("comparisonModeToggle")
+        .querySelectorAll(".toggle-btn")
+        .forEach((b) => b.classList.remove("active"));
+      btn.classList.add("active");
+      state.comparisonMode = btn.dataset.mode;
+      saveComparisonState();
+      // Pure re-render of cached data, no refetch needed.
+      renderComparisonChart(state.comparisonData);
+    };
+
     updateLeaderboardDescription();
 
     await Promise.all([
       loadTopGainers(),
+      loadComparisonChart(state.comparisonPlayerIds),
       loadLeaderboard(),
       initialPlayerIgn ? loadPlayerProfile(initialPlayerIgn) : Promise.resolve(),
     ]);
@@ -97,6 +135,7 @@ async function init() {
   }
 
   setupSearch();
+  setupComparisonSelection();
 
   el("displayModeToggle").onclick = (e) => {
     const btn = e.target.closest(".toggle-btn");
@@ -119,6 +158,7 @@ async function init() {
       if (mutation.attributeName === "theme") {
         updatePlayerChartTheme();
         updateLeaderboardChartTheme();
+        updateComparisonChartTheme();
       }
     });
   });

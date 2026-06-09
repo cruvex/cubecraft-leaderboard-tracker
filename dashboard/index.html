@@ -79,6 +79,7 @@
                 <span id="displayUuid" class="player-uuid">---</span>
               </div>
               <div class="chart-controls">
+                <button id="addToComparisonBtn" class="secondary" type="button">+ Add to comparison</button>
                 <div class="toggle-group" id="displayModeToggle">
                   <button class="toggle-btn active" data-mode="wins">Wins</button>
                   <button class="toggle-btn" data-mode="position">Positions</button>
@@ -119,6 +120,44 @@
           </div>
         </div>
       </main>
+
+      <div class="card comparison-chart-card">
+        <div class="card-title">
+          <span>Player <span class="leaderboardScoreType">Wins</span> Comparison</span>
+          <div class="comparison-controls">
+            <div class="toggle-group" id="comparisonModeToggle">
+              <button class="toggle-btn active" data-mode="total">Total</button>
+              <button class="toggle-btn" data-mode="gained">In timeframe</button>
+            </div>
+            <select id="comparisonTimeframe" aria-label="Chart timeframe">
+              <option value="7">7 days</option>
+              <option value="30" selected>30 days</option>
+              <option value="90">3 months</option>
+              <option value="180">6 months</option>
+              <option value="365">1 year</option>
+              <option value="730">2 years</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="comparison-selection">
+          <div class="input-group comparison-search">
+            <div class="search-wrapper">
+              <input id="comparisonSearch" type="text" placeholder="Add a player by IGN..." autocomplete="off" />
+              <ul id="comparisonSearchDropdown" class="search-dropdown" hidden></ul>
+            </div>
+            <button id="comparisonResetBtn" class="secondary" hidden>Reset to top gainers</button>
+            <button id="comparisonClearBtn" class="secondary" hidden>Clear all</button>
+          </div>
+          <div id="comparisonChips" class="comparison-chips"></div>
+        </div>
+
+        <div class="chart-wrapper" style="height: 440px;">
+          <div id="comparisonChartLoading" class="loading-overlay" style="display: none;">Loading chart...</div>
+          <div id="comparisonEmpty" class="loading-overlay" style="display: none;">No players selected. Add players above or reset to the top gainers.</div>
+          <canvas id="comparisonChart"></canvas>
+        </div>
+      </div>
 
       <div class="card leaderboard-card">
         <div class="card-title" id="leaderboardTitle">Full Leaderboard</div>

@@ -6,6 +6,29 @@ import { apiFetch, endpoints } from "./api.js";
 import { updatePath } from "./router.js";
 import { updateScoreTypeLabels } from "./labels.js";
 import { renderPlayerChart, destroyPlayerChart } from "./charts/playerChart.js";
+import { addToComparison, isInComparison } from "./comparisonSelection.js";
+
+/** Reflect whether the displayed player is already on the comparison chart. */
+function syncAddToComparisonBtn(ign) {
+  const btn = el("addToComparisonBtn");
+  if (!btn) return;
+  const added = isInComparison(ign);
+  btn.textContent = added ? "✓ In comparison" : "+ Add to comparison";
+  btn.classList.toggle("added", added);
+  btn.onclick = () => {
+    addToComparison(ign);
+    syncAddToComparisonBtn(ign);
+  };
+}
+
+// Keep the profile button in sync when the comparison changes elsewhere
+// (e.g. reset/clear, or removing the player via a chip).
+document.addEventListener("comparison:rendered", () => {
+  const cp = state.currentPlayer;
+  if (cp?.ign && el("playerProfile").style.display !== "none") {
+    syncAddToComparisonBtn(cp.ign);
+  }
+});
 
 export function scrollToPlayerProfile() {
   if (window.innerWidth <= 900) {
@@ -63,6 +86,7 @@ export function renderPlayerProfile(scoreData, scoreType) {
 
   el("displayIgn").innerText = scoreData.ign;
   el("displayUuid").innerText = formatUuid(scoreData.player);
+  syncAddToComparisonBtn(scoreData.ign);
 
   const setGainEl = (id, value, showPlus) => {
     const elem = el(id);

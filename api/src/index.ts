@@ -1,4 +1,4 @@
-import { getUuidByIgn, getTopGainers, getPlayerScores, getLeaderboard, searchPlayerIgns } from "./db";
+import { getUuidByIgn, getTopGainers, getTopGainersHistory, getPlayersHistory, getPlayerScores, getLeaderboard, searchPlayerIgns } from "./db";
 import { fetchGames } from "./cubepanion";
 
 const PORT = process.env.PORT ? Number(process.env.PORT) : 4000;
@@ -26,6 +26,37 @@ async function handleTopGainers(req: Request, params: { gameId: string }) {
     const gameId = Number(params.gameId);
     if (isNaN(gameId)) return jsonResponse({ error: "Invalid gameId" }, 400);
     const out = await getTopGainers(days, gameId);
+    return jsonResponse(out);
+}
+
+async function handleTopGainersHistory(req: Request, params: { gameId: string }) {
+    const url = new URL(req.url);
+    const days = Number(url.searchParams.get("days") || 30);
+    const limit = Number(url.searchParams.get("limit") || 10);
+    const gameId = Number(params.gameId);
+    if (isNaN(gameId)) return jsonResponse({ error: "Invalid gameId" }, 400);
+    const out = await getTopGainersHistory(days, gameId, limit);
+    return jsonResponse(out);
+}
+
+// Generic batch history for an explicit player set (uuids or igns via ?ids=a,b,c).
+// Backs the comparison chart once the client supports custom selections.
+async function handlePlayersHistory(req: Request, params: { gameId: string }) {
+    const url = new URL(req.url);
+    const days = Number(url.searchParams.get("days") || 30);
+    const gameId = Number(params.gameId);
+    if (isNaN(gameId)) return jsonResponse({ error: "Invalid gameId" }, 400);
+
+    const ids = (url.searchParams.get("ids") || "")
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
+
+    // Accept either UUIDs or IGNs, mirroring the player-scores endpoint.
+    const resolved = await Promise.all(ids.map(resolvePlayerId));
+    const uuids = resolved.filter((id): id is string => id !== null);
+
+    const out = await getPlayersHistory(uuids, days, gameId);
     return jsonResponse(out);
 }
 
@@ -71,6 +102,8 @@ Bun.serve({
     hostname: "0.0.0.0",
     routes: {
         "/api/games/:gameId/top-gainers": (req) => handleTopGainers(req, req.params as { gameId: string }),
+        "/api/games/:gameId/top-gainers/history": (req) => handleTopGainersHistory(req, req.params as { gameId: string }),
+        "/api/games/:gameId/players/history": (req) => handlePlayersHistory(req, req.params as { gameId: string }),
         "/api/games/:gameId/player/:id": (req) => handlePlayerScores(req, req.params as { gameId: string, id: string }),
         "/api/games": handleGames,
         "/api/games/:gameId/leaderboard": (req) => handleLeaderboard(req, req.params as { gameId: string }),

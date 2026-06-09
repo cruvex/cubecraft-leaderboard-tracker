@@ -98,7 +98,8 @@ body {
   gap: 1rem;
 }
 
-#gameSelector {
+#gameSelector,
+#comparisonTimeframe {
   color-scheme: light;
   padding: 0.4rem 2rem 0.4rem 0.75rem;
   border-radius: 8px;
@@ -115,8 +116,126 @@ body {
   background-size: 0.65rem auto;
 }
 
-#gameSelector:hover {
+#gameSelector:hover,
+#comparisonTimeframe:hover {
   border-color: var(--text-muted);
+}
+
+/* Keep the dropdown from inheriting the bold card-title weight. */
+#comparisonTimeframe {
+  font-weight: 500;
+}
+
+.comparison-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+/* Capitalize the score type in the card title (e.g. "wins" -> "Wins"). */
+.comparison-chart-card .card-title .leaderboardScoreType {
+  text-transform: capitalize;
+}
+
+/* On mobile, stack the title, mode toggle and timeframe picker vertically. */
+@media (max-width: 600px) {
+  .comparison-chart-card .card-title {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.5rem;
+  }
+  .comparison-chart-card .comparison-controls {
+    flex-direction: column;
+    align-items: stretch;
+    width: 100%;
+  }
+  .comparison-chart-card #comparisonModeToggle {
+    width: 100%;
+  }
+  .comparison-chart-card #comparisonModeToggle .toggle-btn {
+    flex: 1;
+    text-align: center;
+  }
+  .comparison-chart-card #comparisonTimeframe {
+    width: 100%;
+  }
+}
+
+.comparison-selection {
+  margin-bottom: 1rem;
+}
+
+.comparison-search {
+  max-width: 480px;
+}
+
+.comparison-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.player-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.4rem 0.25rem 0.6rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: 0.8rem;
+  color: var(--text);
+}
+
+.player-chip-dot {
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 50%;
+  background: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.player-chip--nodata {
+  opacity: 0.6;
+}
+
+.player-chip--toggleable {
+  cursor: pointer;
+  user-select: none;
+}
+
+.player-chip--toggleable:hover {
+  border-color: var(--text-muted);
+}
+
+/* Toggled-off line: dimmed chip with a struck-through name. */
+.player-chip--hidden {
+  opacity: 0.5;
+}
+
+.player-chip--hidden .player-chip-label {
+  text-decoration: line-through;
+}
+
+.player-chip-remove {
+  padding: 0;
+  width: 1.15rem;
+  height: 1.15rem;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 1rem;
+}
+
+.player-chip-remove:hover {
+  background: var(--border);
+  color: var(--text);
 }
 
 @media (max-width: 900px) {
@@ -377,6 +496,55 @@ button.secondary { background: var(--bg); color: var(--text); border: 1px solid 
 button.secondary:hover { background: var(--border); }
 button:disabled { opacity: 0.5; cursor: not-allowed; }
 
+/* Top Gainers rank cell doubles as an add-to-comparison control: the rank
+   number shows by default and is swapped for a subtle "+" on row hover. */
+.tg-rank {
+  position: relative;
+}
+
+.tg-rank .add-to-comparison-btn {
+  position: absolute;
+  inset: 0;
+  display: none; /* revealed on row hover */
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 1.1rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+tr.clickable:hover .tg-rank .rank-number {
+  opacity: 0;
+}
+
+tr.clickable:hover .tg-rank .add-to-comparison-btn {
+  display: flex;
+}
+
+.tg-rank .add-to-comparison-btn:hover {
+  color: var(--primary);
+}
+
+.tg-rank .add-to-comparison-btn.added {
+  color: var(--primary);
+}
+
+/* "Add to comparison" button on the player profile — kept understated. */
+#addToComparisonBtn {
+  white-space: nowrap;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  padding: 0.35rem 0.5rem;
+}
+#addToComparisonBtn:hover { color: var(--primary); background: var(--bg); }
+#addToComparisonBtn.added { color: var(--primary); }
+
 @media (max-width: 600px) {
   .input-group { flex-direction: column; }
   #loadPlayerBtn { width: 100%; }
@@ -455,6 +623,11 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
 .chart-controls {
   flex-shrink: 0;
   margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 .stats-grid {
@@ -646,7 +819,8 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
 /* ================================================
    Leaderboard
    ================================================ */
-.leaderboard-card {
+.leaderboard-card,
+.comparison-chart-card {
   grid-column: 1 / -1;
 }
 

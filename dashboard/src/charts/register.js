@@ -10,6 +10,7 @@ import {
   CategoryScale,
   PointElement,
   Tooltip,
+  Legend,
 } from "chart.js";
 
 Chart.register(
@@ -20,7 +21,8 @@ Chart.register(
   BarElement,
   CategoryScale,
   PointElement,
-  Tooltip
+  Tooltip,
+  Legend
 );
 
 export { Chart };

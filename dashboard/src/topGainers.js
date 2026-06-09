@@ -4,6 +4,24 @@ import { state } from "./state.js";
 import { apiFetch, endpoints } from "./api.js";
 import { updateScoreTypeLabels } from "./labels.js";
 import { loadPlayerProfile, scrollToPlayerProfile } from "./playerProfile.js";
+import { addToComparison, isInComparison } from "./comparisonSelection.js";
+
+/** Reflect comparison membership on a hover-revealed add button. */
+function setAddedState(btn, added) {
+  btn.classList.toggle("added", added);
+  btn.textContent = added ? "✓" : "+";
+  btn.title = added ? "In comparison chart" : "Add to comparison chart";
+}
+
+/** Re-sync every add button to current comparison membership. */
+function syncTopGainersButtons() {
+  document.querySelectorAll("#topGainers .add-to-comparison-btn").forEach((btn) => {
+    setAddedState(btn, isInComparison(btn.dataset.ign));
+  });
+}
+
+// Keep the buttons in sync whenever the comparison changes (add/remove/reset).
+document.addEventListener("comparison:rendered", syncTopGainersButtons);
 
 export async function loadTopGainers() {
   const container = el("topGainers");
@@ -47,9 +65,14 @@ function renderTopGainers(data) {
   data.forEach((row) => {
     const tr = document.createElement("tr");
     tr.className = "clickable";
+    // The rank cell doubles as the add-to-comparison control: the number shows
+    // by default and is replaced by a "+" on row hover.
     tr.innerHTML = `
-      <td>
-      ${i + 1}.
+      <td class="tg-rank text-center">
+        <span class="rank-number">${i + 1}.</span>
+        <button type="button" class="add-to-comparison-btn"
+          title="Add to comparison chart"
+          aria-label="Add ${row.ign} to comparison chart">+</button>
       </td>
       <td>
         <div class="player-ign-cell">${row.ign}</div>
@@ -58,6 +81,16 @@ function renderTopGainers(data) {
         <span class="badge">+${row.score_gain.toLocaleString()}</span>
       </td>
     `;
+
+    const addBtn = tr.querySelector(".add-to-comparison-btn");
+    addBtn.dataset.ign = row.ign;
+    setAddedState(addBtn, isInComparison(row.ign));
+    addBtn.onclick = (e) => {
+      e.stopPropagation(); // don't open the player profile
+      addToComparison(row.ign);
+      setAddedState(addBtn, true); // snappy; the render event re-syncs all rows
+    };
+
     tr.onclick = () => {
       if (state.currentPlayer && state.currentPlayer.id === row.player) return;
       loadPlayerProfile(row.player);

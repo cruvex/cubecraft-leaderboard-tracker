@@ -32,6 +32,14 @@ export const endpoints = {
   /** Sidebar top-gainers list. */
   topGainers: (gameId, days) => `/games/${gameId}/top-gainers${qs({ days })}`,
 
+  /** Default seed for the comparison chart: top-N gainers with their histories. */
+  topGainersHistory: (gameId, days, limit) =>
+    `/games/${gameId}/top-gainers/history${qs({ days, limit })}`,
+
+  /** Comparison chart for an explicit player set (UUIDs or IGNs). */
+  playersHistory: (gameId, ids, days) =>
+    `/games/${gameId}/players/history${qs({ ids: ids.join(","), days })}`,
+
   /**
    * A single player's score history. No `days` param: the backend defaults to
    * its window and the client filters to the displayed range.
