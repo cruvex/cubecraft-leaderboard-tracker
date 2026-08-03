@@ -5,6 +5,23 @@ const mojangBaseUrl = "https://api.mojang.com";
 const trackedGames = ["team_eggwars", "solo_skywars", "free_for_all"];
 
 async function main() {
+  // How deep the leaderboards currently go is a server-side setting that
+  // Cubecraft changes from time to time, so it is read per run instead of
+  // assumed.
+  const config = await fetchLeaderboardConfig();
+
+  if (!config) {
+    console.error("Leaderboard config not found");
+    return;
+  }
+
+  if (!config.enabled) {
+    console.log("Leaderboards are currently disabled");
+    return;
+  }
+
+  console.log(`Leaderboards hold ${config.playerCount} players`);
+
   const games = await fetchGames();
 
   for (const gameName of trackedGames) {
@@ -15,11 +32,11 @@ async function main() {
       continue;
     }
 
-    await processGame(game);
+    await processGame(game, config.playerCount);
   }
 }
 
-async function processGame(game: Game) {
+async function processGame(game: Game, playerCount: number) {
   console.log(`Fetching leaderboard for ${game.displayName} (${game.id})`);
   const leaderboard = await fetchGameLeaderboard(game?.name);
 
@@ -37,13 +54,28 @@ async function processGame(game: Game) {
     !lastSavedSnapshot || new Date(leaderboard.lastUpdated) > lastSavedSnapshot;
 
   if (isNewSnapshot) {
+    // A board shallower than the configured depth is a partial response rather
+    // than a smaller leaderboard, and storing it would fabricate departures for
+    // everyone below the cut. Only the floor is enforced because some games are
+    // still served deeper than the global config claims.
+    if (leaderboard.rows.length < playerCount) {
+      console.log(
+        `Leaderboard returned ${leaderboard.rows.length} rows (expected at least ${playerCount})`,
+      );
+
+      return;
+    }
+
     const igns = leaderboard.rows.map((row: LeaderboardPosition) => row.player);
 
     const uuidMap = await resolvePlayerUUIDs(igns);
 
-    // Expect all uuids for players on leaderboard to be resolved
-    if (uuidMap.size != 200) {
-      console.log(`Player cache size: ${uuidMap.size} (expected 200)`);
+    // Expect every uuid to be resolved: leaderboard_rows.player is a uuid column,
+    // so a player Mojang does not know cannot be stored at all.
+    if (uuidMap.size != leaderboard.rows.length) {
+      console.log(
+        `Resolved ${uuidMap.size} of ${leaderboard.rows.length} players`,
+      );
 
       return;
     }
@@ -185,6 +217,20 @@ async function fetchGameLeaderboard(
   return parsed.data;
 }
 
+async function fetchLeaderboardConfig(): Promise<LeaderboardConfig | undefined> {
+  const res = await fetch(`${cubepanionBaseUrl}/Leaderboard/config`);
+  const json = await res.json();
+
+  const parsed = LeaderboardConfigSchema.safeParse(json);
+
+  if (!parsed.success) {
+    console.error("Invalid response:", parsed.error);
+    return;
+  }
+
+  return parsed.data;
+}
+
 async function fetchGames(): Promise<Game[]> {
   const res = await fetch(`${cubepanionBaseUrl}/Games`);
   const json = await res.json();
@@ -274,6 +320,14 @@ const LeaderboardSchema = z.object({
 });
 
 type Leaderboard = z.infer<typeof LeaderboardSchema>;
+
+const LeaderboardConfigSchema = z.object({
+  enabled: z.boolean(),
+  playerCount: z.number(),
+  pageCount: z.number(),
+});
+
+type LeaderboardConfig = z.infer<typeof LeaderboardConfigSchema>;
 
 const GameSchema = z.object({
   id: z.number(),
