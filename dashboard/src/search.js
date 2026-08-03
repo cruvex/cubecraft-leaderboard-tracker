@@ -13,15 +13,18 @@ function showDropdown(items) {
     dropdown.hidden = true;
     return;
   }
-  items.forEach((ign) => {
+  // Items are { uuid, ign }; keep the uuid on the element so keyboard selection
+  // can load by uuid too (skips the server-side ign->uuid lookup).
+  items.forEach((player) => {
     const li = document.createElement("li");
-    li.textContent = ign;
+    li.textContent = player.ign;
+    li.dataset.uuid = player.uuid;
     li.addEventListener("mousedown", (e) => {
       e.preventDefault();
-      el("playerSearch").value = ign;
+      el("playerSearch").value = player.ign;
       dropdown.hidden = true;
       state.autocompleteSelectedIndex = -1;
-      loadPlayerProfile(ign);
+      loadPlayerProfile(player.uuid);
     });
     dropdown.appendChild(li);
   });
@@ -68,10 +71,10 @@ export function setupSearch() {
       const items = dropdown.querySelectorAll("li");
       const idx = state.autocompleteSelectedIndex;
       if (!dropdown.hidden && idx >= 0 && items[idx]) {
-        const ign = items[idx].textContent;
-        el("playerSearch").value = ign;
+        const li = items[idx];
+        el("playerSearch").value = li.textContent;
         hideDropdown();
-        loadPlayerProfile(ign);
+        loadPlayerProfile(li.dataset.uuid || li.textContent);
       } else {
         const query = el("playerSearch").value.trim();
         if (query) {

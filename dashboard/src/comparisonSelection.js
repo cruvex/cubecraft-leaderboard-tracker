@@ -1,10 +1,10 @@
 // Player selection for the "wins over time" comparison chart.
 //
-// state.comparisonPlayerIds is tri-state:
+// state.comparisonPlayers is tri-state:
 //   null  -> default: show the top gainers (rendered as chips)
 //   []    -> explicitly cleared: show nothing
-//   [..]  -> custom: the listed IGNs
-// Search reuses the existing /search/players endpoint (returns IGNs).
+//   [..]  -> custom: the listed { uuid, ign } pairs
+// Search reuses the existing /search/players endpoint (returns { uuid, ign }).
 import { el } from "./dom.js";
 import { state } from "./state.js";
 import { apiFetch, endpoints } from "./api.js";
@@ -17,51 +17,65 @@ import { saveComparisonState } from "./comparisonStore.js";
 
 let autocompleteIndex = -1;
 
-/** The IGNs currently shown: the drawn series in default mode, else the list. */
-function currentIgns() {
-  return state.comparisonPlayerIds === null
-    ? (state.comparisonSeries || []).map((s) => s.ign)
-    : state.comparisonPlayerIds;
+/** The players currently shown: the drawn series in default mode, else the list. */
+function currentPlayers() {
+  if (state.comparisonPlayers !== null) return state.comparisonPlayers;
+  // Default mode: derive { uuid, ign } from the drawn series, picking the UUIDs
+  // out of the fetched data so a selection seeded from the default carries them.
+  // Every drawn series comes from comparisonData, so the lookup always hits.
+  const uuidByIgn = new Map(
+    (state.comparisonData || []).map((p) => [p.ign.toLowerCase(), p.player])
+  );
+  return (state.comparisonSeries || []).map((s) => ({
+    uuid: uuidByIgn.get(s.ign.toLowerCase()),
+    ign: s.ign,
+  }));
 }
 
-function isSelected(ign) {
-  return currentIgns().some((p) => p.toLowerCase() === ign.toLowerCase());
+/** @param {{ uuid: string | null, ign: string }} player uuid is null for ign-only checks */
+function isSelected(player) {
+  return currentPlayers().some(
+    (p) =>
+      (player.uuid != null && p.uuid === player.uuid) ||
+      p.ign.toLowerCase() === player.ign.toLowerCase()
+  );
 }
 
 /** Apply a new selection and reload the chart. */
-function setSelection(ids) {
-  state.comparisonPlayerIds = ids;
+function setSelection(players) {
+  state.comparisonPlayers = players;
   saveComparisonState();
   renderSelection();
-  loadComparisonChart(ids);
+  loadComparisonChart(players);
 }
 
-function addPlayer(ign) {
-  if (!ign || isSelected(ign)) return;
+/** @param {{ uuid: string, ign: string }} player */
+function addPlayer(player) {
+  if (!player?.ign || isSelected(player)) return;
   // Adding from the default view keeps the current top gainers and appends.
-  setSelection([...currentIgns(), ign]);
+  setSelection([...currentPlayers(), player]);
 }
 
 /**
  * Public entry point for "add to comparison" buttons elsewhere (top gainers,
  * player profile). Returns true if the player was newly added, false if they
  * were already shown.
- * @param {string} ign
+ * @param {{ uuid: string, ign: string }} player
  */
-export function addToComparison(ign) {
-  if (!ign || isSelected(ign)) return false;
-  addPlayer(ign);
+export function addToComparison(player) {
+  if (!player?.ign || isSelected(player)) return false;
+  addPlayer(player);
   return true;
 }
 
 /** True if the player is already on the comparison chart. */
 export function isInComparison(ign) {
-  return !!ign && isSelected(ign);
+  return !!ign && isSelected({ uuid: null, ign });
 }
 
 function removePlayer(ign) {
-  state.comparisonPlayerIds = currentIgns().filter(
-    (p) => p.toLowerCase() !== ign.toLowerCase()
+  state.comparisonPlayers = currentPlayers().filter(
+    (p) => p.ign.toLowerCase() !== ign.toLowerCase()
   );
   state.comparisonHidden.delete(ign.toLowerCase());
   saveComparisonState();
@@ -84,7 +98,7 @@ function toggleVisibility(ign) {
 }
 
 function resetSelection() {
-  if (state.comparisonPlayerIds === null) return;
+  if (state.comparisonPlayers === null) return;
   state.comparisonHidden.clear();
   setSelection(null);
 }
@@ -101,8 +115,8 @@ export function renderSelection() {
   const clearBtn = el("comparisonClearBtn");
   const emptyEl = el("comparisonEmpty");
 
-  const isDefault = state.comparisonPlayerIds === null;
-  const chipIgns = currentIgns();
+  const isDefault = state.comparisonPlayers === null;
+  const chipIgns = currentPlayers().map((p) => p.ign);
 
   resetBtn.hidden = isDefault; // only meaningful once you've diverged from default
   clearBtn.hidden = chipIgns.length === 0;
@@ -176,26 +190,30 @@ export function renderSelection() {
   });
 }
 
+// The { uuid, ign } items currently shown in the dropdown, by list position,
+// so keyboard selection can recover the full player from the highlight index.
+let dropdownItems = [];
+
 function showDropdown(items) {
   const dropdown = el("comparisonSearchDropdown");
   dropdown.innerHTML = "";
   autocompleteIndex = -1;
 
   // Hide players already in the selection.
-  const filtered = items.filter((ign) => !isSelected(ign));
-  if (!filtered.length) {
+  dropdownItems = items.filter((player) => !isSelected(player));
+  if (!dropdownItems.length) {
     dropdown.hidden = true;
     return;
   }
 
-  filtered.forEach((ign) => {
+  dropdownItems.forEach((player) => {
     const li = document.createElement("li");
-    li.textContent = ign;
+    li.textContent = player.ign;
     li.addEventListener("mousedown", (e) => {
       e.preventDefault();
       el("comparisonSearch").value = "";
       hideDropdown();
-      addPlayer(ign);
+      addPlayer(player);
     });
     dropdown.appendChild(li);
   });
@@ -253,12 +271,11 @@ export function setupComparisonSelection() {
   input.onkeyup = (e) => {
     if (e.key !== "Enter") return;
     const dropdown = el("comparisonSearchDropdown");
-    const items = dropdown.querySelectorAll("li");
-    if (!dropdown.hidden && autocompleteIndex >= 0 && items[autocompleteIndex]) {
-      const ign = items[autocompleteIndex].textContent;
+    if (!dropdown.hidden && autocompleteIndex >= 0 && dropdownItems[autocompleteIndex]) {
+      const player = dropdownItems[autocompleteIndex];
       input.value = "";
       hideDropdown();
-      addPlayer(ign);
+      addPlayer(player);
     }
   };
 

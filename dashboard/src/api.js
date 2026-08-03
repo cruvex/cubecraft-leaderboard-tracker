@@ -49,5 +49,6 @@ export const endpoints = {
 
   leaderboard: (gameId, days) => `/games/${gameId}/leaderboard${qs({ days })}`,
 
+  /** Autocomplete search; returns { uuid, ign } pairs. */
   searchPlayers: (q) => `/search/players${qs({ q })}`,
 };

@@ -1,4 +1,4 @@
-import { getUuidByIgn, getTopGainers, getTopGainersHistory, getPlayersHistory, getPlayerScores, getLeaderboard, searchPlayerIgns } from "./db";
+import { getUuidByIgn, getUuidsByIgns, getTopGainers, getTopGainersHistory, getPlayersHistory, getPlayerScores, getLeaderboard, searchPlayers } from "./db";
 import { fetchGames } from "./cubepanion";
 
 const PORT = process.env.PORT ? Number(process.env.PORT) : 4000;
@@ -52,9 +52,14 @@ async function handlePlayersHistory(req: Request, params: { gameId: string }) {
         .map((s) => s.trim())
         .filter(Boolean);
 
-    // Accept either UUIDs or IGNs, mirroring the player-scores endpoint.
-    const resolved = await Promise.all(ids.map(resolvePlayerId));
-    const uuids = resolved.filter((id): id is string => id !== null);
+    // Accept either UUIDs or IGNs. UUIDs are at least 32 chars while Minecraft
+    // IGNs are at most 16, so length alone tells them apart. IGNs are resolved
+    // in one batch query; the dashboard always sends UUIDs and skips this.
+    const igns = ids.filter((id) => id.length < 32);
+    const uuidByIgn = await getUuidsByIgns(igns);
+    const uuids = ids
+        .map((id) => (id.length >= 32 ? id : uuidByIgn.get(id.toLowerCase())))
+        .filter((id): id is string => !!id); // unresolved IGNs are dropped
 
     const out = await getPlayersHistory(uuids, days, gameId);
     return jsonResponse(out);
@@ -85,7 +90,7 @@ async function handleSearchPlayers(req: Request) {
     const url = new URL(req.url);
     const q = url.searchParams.get("q")?.trim() ?? "";
     if (q.length < 2) return jsonResponse([]);
-    const results = await searchPlayerIgns(q);
+    const results = await searchPlayers(q);
     return jsonResponse(results);
 }
 

@@ -8,16 +8,19 @@ import { updateScoreTypeLabels } from "./labels.js";
 import { renderPlayerChart, destroyPlayerChart } from "./charts/playerChart.js";
 import { addToComparison, isInComparison } from "./comparisonSelection.js";
 
-/** Reflect whether the displayed player is already on the comparison chart. */
-function syncAddToComparisonBtn(ign) {
+/**
+ * Reflect whether the displayed player is already on the comparison chart.
+ * @param {{ uuid: string, ign: string }} player
+ */
+function syncAddToComparisonBtn(player) {
   const btn = el("addToComparisonBtn");
   if (!btn) return;
-  const added = isInComparison(ign);
+  const added = isInComparison(player.ign);
   btn.textContent = added ? "✓ In comparison" : "+ Add to comparison";
   btn.classList.toggle("added", added);
   btn.onclick = () => {
-    addToComparison(ign);
-    syncAddToComparisonBtn(ign);
+    addToComparison(player);
+    syncAddToComparisonBtn(player);
   };
 }
 
@@ -26,7 +29,7 @@ function syncAddToComparisonBtn(ign) {
 document.addEventListener("comparison:rendered", () => {
   const cp = state.currentPlayer;
   if (cp?.ign && el("playerProfile").style.display !== "none") {
-    syncAddToComparisonBtn(cp.ign);
+    syncAddToComparisonBtn({ uuid: cp.id, ign: cp.ign });
   }
 });
 
@@ -86,7 +89,7 @@ export function renderPlayerProfile(scoreData, scoreType) {
 
   el("displayIgn").innerText = scoreData.ign;
   el("displayUuid").innerText = formatUuid(scoreData.player);
-  syncAddToComparisonBtn(scoreData.ign);
+  syncAddToComparisonBtn({ uuid: scoreData.player, ign: scoreData.ign });
 
   const setGainEl = (id, value, showPlus) => {
     const elem = el(id);

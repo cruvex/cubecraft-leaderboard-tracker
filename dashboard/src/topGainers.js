@@ -87,7 +87,7 @@ function renderTopGainers(data) {
     setAddedState(addBtn, isInComparison(row.ign));
     addBtn.onclick = (e) => {
       e.stopPropagation(); // don't open the player profile
-      addToComparison(row.ign);
+      addToComparison({ uuid: row.player, ign: row.ign });
       setAddedState(addBtn, true); // snappy; the render event re-syncs all rows
     };
 

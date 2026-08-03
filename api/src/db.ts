@@ -239,6 +239,23 @@ export async function getPlayerScores(uuid: string, days = 30, gameId: number) {
   return { player: uuid, ign, rows: filteredRows, gain7d, gain30d };
 }
 
+/**
+ * Batch-resolve IGNs to UUIDs in one query (case-insensitive, latest IGN wins).
+ * Returns a map keyed by lowercased IGN; IGNs with no match are absent.
+ */
+export async function getUuidsByIgns(igns: string[]): Promise<Map<string, string>> {
+  if (!igns.length) return new Map();
+  const res = await Bun.sql`
+    SELECT DISTINCT ON (LOWER(player_ign))
+      LOWER(player_ign) AS ign,
+      player_uuid
+    FROM ign_history
+    WHERE LOWER(player_ign) IN ${Bun.sql(igns.map((i) => i.toLowerCase()))}
+    ORDER BY LOWER(player_ign), id DESC
+  `;
+  return new Map((res || []).map((r: any) => [r.ign, r.player_uuid]));
+}
+
 export async function getUuidByIgn(ign: string): Promise<string | null> {
   const res = await Bun.sql`
     SELECT player_uuid
@@ -251,12 +268,12 @@ export async function getUuidByIgn(ign: string): Promise<string | null> {
   return res[0].player_uuid;
 }
 
-export async function searchPlayerIgns(query: string): Promise<string[]> {
+export async function searchPlayers(query: string): Promise<{ uuid: string; ign: string }[]> {
   const contains = `%${query}%`;
   const starts = `${query}%`;
   const res = await Bun.sql`
-    SELECT player_ign FROM (
-      SELECT DISTINCT ON (player_uuid) player_ign
+    SELECT player_uuid, player_ign FROM (
+      SELECT DISTINCT ON (player_uuid) player_uuid, player_ign
       FROM public.ign_history
       WHERE player_ign ILIKE ${contains}
       ORDER BY player_uuid, id DESC
@@ -266,5 +283,5 @@ export async function searchPlayerIgns(query: string): Promise<string[]> {
       player_ign
     LIMIT 10
   `;
-  return (res || []).map((r: any) => r.player_ign);
+  return (res || []).map((r: any) => ({ uuid: r.player_uuid, ign: r.player_ign }));
 }

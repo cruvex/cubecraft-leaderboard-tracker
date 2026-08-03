@@ -66,7 +66,7 @@ async function init() {
       updateLeaderboardDescription();
       updatePath();
       loadTopGainers();
-      loadComparisonChart(state.comparisonPlayerIds);
+      loadComparisonChart(state.comparisonPlayers);
       loadLeaderboard();
       if (state.currentPlayer) {
         loadPlayerProfile(state.currentPlayer.ign, true);
@@ -103,7 +103,7 @@ async function init() {
     el("comparisonTimeframe").onchange = (e) => {
       state.comparisonDays = Number(e.target.value);
       saveComparisonState();
-      loadComparisonChart(state.comparisonPlayerIds);
+      loadComparisonChart(state.comparisonPlayers);
     };
 
     el("comparisonModeToggle").onclick = (e) => {
@@ -123,7 +123,7 @@ async function init() {
 
     await Promise.all([
       loadTopGainers(),
-      loadComparisonChart(state.comparisonPlayerIds),
+      loadComparisonChart(state.comparisonPlayers),
       loadLeaderboard(),
       initialPlayerIgn ? loadPlayerProfile(initialPlayerIgn) : Promise.resolve(),
     ]);

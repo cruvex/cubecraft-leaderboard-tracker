@@ -14,12 +14,12 @@ export const state = {
   // --- "Wins over time" comparison chart (independent of the global controls) ---
   /**
    * Players shown in the comparison chart. `null` means "use the default"
-   * (top gainers); a list of UUIDs/IGNs means a custom selection. Mutating this
-   * and calling loadComparisonChart() is the seam for a future add/remove
-   * players feature.
-   * @type {string[] | null}
+   * (top gainers); a list means a custom selection. Each entry carries the
+   * UUID (what the API is queried by, so the server never has to resolve an
+   * ign→uuid) and the IGN (for the chips).
+   * @type {{ uuid: string, ign: string }[] | null}
    */
-  comparisonPlayerIds: null,
+  comparisonPlayers: null,
   /** Timeframe (in days) for the comparison chart, independent of the global toggle. */
   comparisonDays: 30,
   /** "total" = absolute score; "gained" = rebased to 0 at each player's earliest in-window point. */

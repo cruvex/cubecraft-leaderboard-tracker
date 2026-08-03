@@ -3,7 +3,7 @@
 import { state } from "./state.js";
 
 const KEY = "comparison-chart-state";
-const ALLOWED_DAYS = [7, 30, 90, 180, 365];
+const ALLOWED_DAYS = [7, 30, 90, 180, 365, 730];
 
 /** Serialize the current comparison state to localStorage. */
 export function saveComparisonState() {
@@ -13,8 +13,9 @@ export function saveComparisonState() {
       JSON.stringify({
         days: state.comparisonDays,
         mode: state.comparisonMode,
-        // null = default (top gainers), [] = cleared, [..] = custom selection.
-        players: state.comparisonPlayerIds,
+        // null = default (top gainers), [] = cleared, [..] = custom selection
+        // of { uuid, ign } pairs.
+        players: state.comparisonPlayers,
       })
     );
   } catch {
@@ -31,11 +32,16 @@ export function loadComparisonState() {
 
     if (ALLOWED_DAYS.includes(saved.days)) state.comparisonDays = saved.days;
     if (saved.mode === "total" || saved.mode === "gained") state.comparisonMode = saved.mode;
+    // Selections are { uuid, ign } pairs; the chart always queries by UUID.
+    // Legacy saves (bare IGN strings) are discarded and fall back to default.
     if (
       saved.players === null ||
-      (Array.isArray(saved.players) && saved.players.every((p) => typeof p === "string"))
+      (Array.isArray(saved.players) &&
+        saved.players.every(
+          (p) => p && typeof p.uuid === "string" && typeof p.ign === "string"
+        ))
     ) {
-      state.comparisonPlayerIds = saved.players;
+      state.comparisonPlayers = saved.players;
     }
   } catch {
     // Corrupt/unparseable value — fall back to defaults.

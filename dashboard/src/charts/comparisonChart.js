@@ -1,6 +1,6 @@
 // "Wins over time" comparison chart: one line per player.
 //
-// Defaults to the top-10 gainers (state.comparisonPlayerIds === null) but is not
+// Defaults to the top-10 gainers (state.comparisonPlayers === null) but is not
 // bound to that concept — passing an explicit player list renders any selection.
 // Timeframe and total/gained mode are independent of the global dashboard
 // controls (see state.comparison*).
@@ -61,12 +61,12 @@ export function destroyComparisonChart() {
 
 /**
  * Load the comparison chart for a set of players.
- * @param {string[] | null} playerIds UUIDs/IGNs to show. Falsy/empty falls back
- *   to the default top-gainers seed.
+ * @param {{ uuid: string, ign: string }[] | null} players Selection to show.
+ *   Falsy falls back to the default top-gainers seed; [] draws nothing.
  */
-export async function loadComparisonChart(playerIds = null) {
+export async function loadComparisonChart(players = null) {
   // Explicitly-cleared selection ([]): nothing to fetch or draw.
-  if (Array.isArray(playerIds) && playerIds.length === 0) {
+  if (Array.isArray(players) && players.length === 0) {
     state.comparisonData = [];
     renderComparisonChart([]);
     return;
@@ -77,11 +77,13 @@ export async function loadComparisonChart(playerIds = null) {
 
   try {
     const { currentGame, comparisonDays } = state;
+    // Always query by UUID so the server skips its ign→uuid resolution (the
+    // endpoint accepts IGNs too, but that path is for external callers).
+    const ids = (players || []).map((p) => p.uuid);
     // null => default top-gainers seed; a non-empty list => explicit selection.
-    const path =
-      playerIds && playerIds.length
-        ? endpoints.playersHistory(currentGame.id, playerIds, comparisonDays)
-        : endpoints.topGainersHistory(currentGame.id, comparisonDays);
+    const path = ids.length
+      ? endpoints.playersHistory(currentGame.id, ids, comparisonDays)
+      : endpoints.topGainersHistory(currentGame.id, comparisonDays);
 
     state.comparisonData = (await apiFetch(path)) || [];
     renderComparisonChart(state.comparisonData);
