@@ -1,5 +1,9 @@
 {
   "name": "cubecraft-leaderboard-dashboard-api",
+  "scripts": {
+    "start": "bun src/index.ts",
+    "migrate": "bun src/migrate.ts"
+  },
   "dependencies": {
     "zod": "^4.3.6"
   },

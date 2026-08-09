@@ -10,7 +10,8 @@
   "scripts": {
     "build": "vite build dashboard",
     "dev:dashboard": "vite dashboard",
-    "dev:api": "bun --hot api/src/index.ts"
+    "dev:api": "bun --hot api/src/index.ts",
+    "migrate": "bun api/src/migrate.ts"
   },
   "devDependencies": {
     "@types/bun": "latest",
