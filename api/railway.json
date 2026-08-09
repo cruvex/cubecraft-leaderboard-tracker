@@ -1,0 +1,8 @@
+{
+  "$schema": "https://railway.com/railway.schema.json",
+  "deploy": {
+    "preDeployCommand": ["bun run migrate"],
+    "startCommand": "bun run start:api",
+    "healthcheckPath": "/api/healthz"
+  }
+}

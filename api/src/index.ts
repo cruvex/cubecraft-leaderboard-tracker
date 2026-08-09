@@ -113,6 +113,7 @@ Bun.serve({
         "/api/games": handleGames,
         "/api/games/:gameId/leaderboard": (req) => handleLeaderboard(req, req.params as { gameId: string }),
         "/api/search/players": handleSearchPlayers,
+        "/api/healthz": () => new Response("OK", { status: 200 }),
     },
     async fetch(req: Request) {
         return new Response("Not found", { status: 404 });
