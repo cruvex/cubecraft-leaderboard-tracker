@@ -35,7 +35,7 @@ async function init() {
     }
 
     const fetchedGames = await apiFetch(endpoints.games());
-    state.games = fetchedGames.filter((g) => g.shouldTrack);
+    state.games = fetchedGames.filter((g) => g.active);
 
     // Default to Team Eggwars if no game found in path
     if (!initialGameName) {
@@ -51,7 +51,10 @@ async function init() {
 
     const selector = el("gameSelector");
     state.games.forEach((game) => {
+      console.log("###############")
+      console.log("Checking game", game.name)
       if (!enabledGames.includes(game.name)) return;
+      console.log("Adding game", game.name)
       const opt = document.createElement("option");
       opt.value = game.id;
       opt.textContent = game.displayName;
