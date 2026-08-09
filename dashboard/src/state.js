@@ -43,4 +43,4 @@ export const state = {
   autocompleteSelectedIndex: -1,
 };
 
-export const enabledGames = ["team_eggwars", "solo_skywars", "free_for_all"];
+export const enabledGames = ["team_eggwars", "solo_skywars", "free_for_all", "mob_who"];
