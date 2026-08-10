@@ -2,7 +2,7 @@ import { z } from "zod";
 
 const cubepanionBaseUrl = "https://cubepanion.ameliah.art/api/v2";
 const mojangBaseUrl = "https://api.mojang.com";
-const trackedGames = ["team_eggwars", "solo_skywars", "free_for_all"];
+const trackedGames = ["team_eggwars", "solo_skywars", "free_for_all", "mob_who"];
 
 async function main() {
   // How deep the leaderboards currently go is a server-side setting that
