@@ -11,7 +11,8 @@
     "build": "vite build dashboard",
     "dev:dashboard": "vite dashboard",
     "dev:api": "bun --hot api/src/index.ts",
-    "migrate": "bun api/src/migrate.ts"
+    "migrate": "bun api/src/migrate.ts",
+    "db:refresh": "bun scripts/refresh-db.ts"
   },
   "devDependencies": {
     "@types/bun": "latest",
