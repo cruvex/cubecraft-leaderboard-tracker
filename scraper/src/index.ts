@@ -148,10 +148,40 @@ async function saveGameLeaderboardSnapshot(
     position: row.position,
     player: uuidMap.get(row.player.toLowerCase()) || row.player,
     score: row.score,
-    texture: row.texture,
   }));
 
   await Bun.sql`INSERT INTO leaderboard_rows ${Bun.sql(leaderboardRows)}`;
+
+  await savePlayerTextures(leaderboard, uuidMap);
+}
+
+// One blob per player. The timestamp guard stops a re-run, or a snapshot
+// imported out of order, overwriting a newer texture.
+async function savePlayerTextures(
+  leaderboard: Leaderboard,
+  uuidMap: Map<string, string>,
+) {
+  // Two IGNs on one UUID would make ON CONFLICT hit the same row twice, which
+  // Postgres rejects.
+  const textures = new Map<string, PlayerTextureRow>();
+
+  for (const row of leaderboard.rows) {
+    const player = uuidMap.get(row.player.toLowerCase()) || row.player;
+
+    textures.set(player, {
+      player_uuid: player,
+      texture: row.texture,
+      updated_at: leaderboard.lastUpdated,
+    });
+  }
+
+  await Bun.sql`
+    INSERT INTO player_textures ${Bun.sql([...textures.values()])}
+    ON CONFLICT (player_uuid) DO UPDATE
+      SET texture    = EXCLUDED.texture,
+          updated_at = EXCLUDED.updated_at
+    WHERE player_textures.updated_at < EXCLUDED.updated_at
+  `;
 }
 
 async function getLastGameSnapshotTimestamp(
@@ -302,6 +332,12 @@ const LeaderboardSnapshotRowSchema = z.object({
 });
 
 type LeaderboardSnapshotRow = z.infer<typeof LeaderboardSnapshotRowSchema>;
+
+type PlayerTextureRow = {
+  player_uuid: string;
+  texture: string;
+  updated_at: Date;
+};
 
 const LeaderboardPositionSchema = z.object({
   gameId: z.number(),
