@@ -52,17 +52,6 @@ export async function loadPlayerProfile(idOrIgn, forceFetch = false) {
     return;
   }
 
-  el("emptyState").style.display = "none";
-  el("errorState").style.display = "none";
-  el("playerProfile").style.display = "block";
-  el("chartLoading").style.display = "flex";
-
-  el("displayIgn").innerText = "Loading...";
-  el("displayUuid").innerText = idOrIgn;
-  el("displayGain7d").innerText = "---";
-  el("displayGain30d").innerText = "---";
-  el("displayCurrentScore").innerText = "---";
-
   try {
     const scoreData = await apiFetch(endpoints.playerScores(state.currentGame.id, idOrIgn));
     state.currentPlayer = { id: scoreData.player, ign: scoreData.ign, data: scoreData };

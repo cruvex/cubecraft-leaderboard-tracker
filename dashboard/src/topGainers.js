@@ -25,8 +25,6 @@ document.addEventListener("comparison:rendered", syncTopGainersButtons);
 
 export async function loadTopGainers() {
   const container = el("topGainers");
-  container.innerHTML =
-    '<div class="text-muted centered-p" style="padding: 1.5rem;">Loading...</div>';
 
   try {
     const topGainers = await apiFetch(
