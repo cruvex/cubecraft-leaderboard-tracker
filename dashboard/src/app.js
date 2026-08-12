@@ -51,10 +51,7 @@ async function init() {
 
     const selector = el("gameSelector");
     state.games.forEach((game) => {
-      console.log("###############")
-      console.log("Checking game", game.name)
       if (!enabledGames.includes(game.name)) return;
-      console.log("Adding game", game.name)
       const opt = document.createElement("option");
       opt.value = game.id;
       opt.textContent = game.displayName;
