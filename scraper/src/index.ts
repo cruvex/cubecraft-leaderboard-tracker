@@ -8,13 +8,11 @@ const trackedGames = ["team_eggwars", "solo_skywars", "free_for_all", "mob_who"]
 async function main(): Promise<RunReport> {
   const start = Bun.nanoseconds();
 
-  // How deep the leaderboards currently go is a server-side setting that
-  // Cubecraft changes from time to time, so it is read per run instead of
-  // assumed.
+  // How deep the leaderboards go is a Cubepanion setting that changes, so it is
+  // read per run instead of assumed.
   const config = await fetchLeaderboardConfig();
 
-  // Thrown rather than returned: without the depth there is nothing to check a
-  // partial response against, so the run cannot safely store anything.
+  // Without the depth there is nothing to check a partial response against.
   if (!config) throw new Error("Leaderboard config not found");
 
   if (!config.enabled) {
@@ -39,11 +37,10 @@ async function main(): Promise<RunReport> {
     reports.push(await processGame(game, config.playerCount));
   }
 
-  return {
-    kind: "run",
-    games: reports,
-    durationMs: (Bun.nanoseconds() - start) / 1_000_000,
-  };
+  const seconds = (Bun.nanoseconds() - start) / 1_000_000_000;
+  console.log(`Checked ${trackedGames.length} games in ${seconds.toFixed(1)}s`);
+
+  return { kind: "run", games: reports };
 }
 
 async function processGame(
@@ -71,10 +68,9 @@ async function processGame(
     return { game: game.displayName, status: "unchanged" };
   }
 
-  // A board shallower than the configured depth is a partial response rather
-  // than a smaller leaderboard, and storing it would fabricate departures for
-  // everyone below the cut. Only the floor is enforced because some games are
-  // still served deeper than the global config claims.
+  // A short board is a partial response, not a smaller leaderboard: storing it
+  // would fabricate departures for everyone below the cut. Only the floor is
+  // checked -- some games are served deeper than the config claims.
   if (leaderboard.rows.length < playerCount) {
     console.log(
       `Leaderboard returned ${leaderboard.rows.length} rows (expected at least ${playerCount})`,
@@ -90,10 +86,10 @@ async function processGame(
 
   const igns = leaderboard.rows.map((row: LeaderboardPosition) => row.player);
 
-  const { uuidMap, fetched, notFound } = await resolvePlayerUUIDs(igns);
+  const uuidMap = await resolvePlayerUUIDs(igns);
 
-  // Expect every uuid to be resolved: leaderboard_rows.player is a uuid column,
-  // so a player Mojang does not know cannot be stored at all.
+  // leaderboard_rows.player is a uuid column, so a player Mojang does not know
+  // cannot be stored at all.
   if (uuidMap.size != leaderboard.rows.length) {
     console.log(
       `Resolved ${uuidMap.size} of ${leaderboard.rows.length} players`,
@@ -104,7 +100,6 @@ async function processGame(
       status: "unresolved",
       resolved: uuidMap.size,
       total: leaderboard.rows.length,
-      missing: notFound,
     };
   }
 
@@ -114,13 +109,13 @@ async function processGame(
   return {
     game: game.displayName,
     status: "saved",
-    rows: leaderboard.rows.length,
     lastUpdated: leaderboard.lastUpdated,
-    fetched,
   };
 }
 
-async function resolvePlayerUUIDs(igns: string[]): Promise<ResolvedPlayers> {
+async function resolvePlayerUUIDs(
+  igns: string[],
+): Promise<Map<string, string>> {
   const cachedPlayers = await getCachedPlayers(igns);
   const cachedIgns = new Set(cachedPlayers.map((p) => p.ign.toLowerCase()));
 
@@ -128,7 +123,6 @@ async function resolvePlayerUUIDs(igns: string[]): Promise<ResolvedPlayers> {
   console.log(`${uncachedIgns.length} players not found in DB cache`);
 
   let unknownPlayers: PlayerProfile[] = [];
-  let notFound: string[] = [];
 
   if (uncachedIgns.length > 0) {
     unknownPlayers = await fetchUnknownPlayers(uncachedIgns);
@@ -138,7 +132,8 @@ async function resolvePlayerUUIDs(igns: string[]): Promise<ResolvedPlayers> {
       await insertCachedPlayers(unknownPlayers);
     }
 
-    notFound = uncachedIgns.filter(
+    // Logged only: the Discord post does not name players.
+    const notFound = uncachedIgns.filter(
         ign => !unknownPlayers.some(p => p.ign === ign)
     );
 
@@ -153,7 +148,7 @@ async function resolvePlayerUUIDs(igns: string[]): Promise<ResolvedPlayers> {
     uuidMap.set(player.ign.toLowerCase(), player.uuid);
   });
 
-  return { uuidMap, fetched: unknownPlayers.length, notFound };
+  return uuidMap;
 }
 
 async function saveGameLeaderboardSnapshot(
@@ -371,12 +366,6 @@ type PlayerTextureRow = {
   updated_at: Date;
 };
 
-type ResolvedPlayers = {
-  uuidMap: Map<string, string>;
-  fetched: number;
-  notFound: string[];
-};
-
 const LeaderboardPositionSchema = z.object({
   gameId: z.number(),
   position: z.number(),
@@ -418,8 +407,7 @@ type Game = z.infer<typeof GameSchema>;
 
 const GameResponse = z.array(GameSchema);
 
-// A cron run that dies is invisible unless it says so, so the throw is caught
-// here only to report it.
+// A cron run that dies is invisible unless it says so.
 try {
   await sendReport(await main());
 } catch (err) {

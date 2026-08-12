@@ -1,10 +1,7 @@
 /**
- * Posts a run summary to a Discord webhook. Silent when DISCORD_WEBHOOK_URL is
- * unset, so local runs and the audit scripts stay out of the channel.
- *
- * The cron runs every 15 minutes and Cubecraft updates far less often than
- * that, so a quiet run sends nothing -- otherwise the channel would carry ~96
- * "nothing happened" messages a day and the updates would be lost in them.
+ * Posts a run summary to a Discord webhook. Sends nothing when
+ * DISCORD_WEBHOOK_URL is unset, or when the run changed nothing -- the cron
+ * runs every 15 minutes and Cubepanion updates far less often.
  */
 const webhookUrl = process.env.DISCORD_WEBHOOK_URL;
 
@@ -13,15 +10,17 @@ const yellow = 0xfee75c;
 const red = 0xed4245;
 
 export type GameReport = { game: string } & (
-  | { status: "saved"; rows: number; lastUpdated: Date; fetched: number }
+  | { status: "saved"; lastUpdated: Date }
   | { status: "unchanged" }
   | { status: "partial"; rows: number; expected: number }
-  | { status: "unresolved"; resolved: number; total: number; missing: string[] }
+  | { status: "unresolved"; resolved: number; total: number }
   | { status: "missing" }
 );
 
+type ReportedGame = Exclude<GameReport, { status: "unchanged" }>;
+
 export type RunReport =
-  | { kind: "run"; games: GameReport[]; durationMs: number }
+  | { kind: "run"; games: GameReport[] }
   | { kind: "disabled" }
   | { kind: "failed"; error: unknown };
 
@@ -52,8 +51,8 @@ export async function sendReport(report: RunReport) {
 function buildEmbed(report: RunReport) {
   if (report.kind === "failed") {
     return {
-      title: "Scrape failed",
-      description: codeBlock(formatError(report.error)),
+      title: "The update run failed",
+      description: `Nothing was updated this run. It will be retried on the next one.\n${codeBlock(formatError(report.error))}`,
       color: red,
       timestamp: new Date().toISOString(),
     };
@@ -61,72 +60,68 @@ function buildEmbed(report: RunReport) {
 
   if (report.kind === "disabled") {
     return {
-      title: "Leaderboards are disabled",
-      description: "Cubepanion is reporting leaderboards as disabled; nothing was scraped.",
+      title: "Leaderboards are turned off",
+      description:
+        "Cubepanion has leaderboards disabled right now, so there is nothing to update.",
       color: yellow,
       timestamp: new Date().toISOString(),
     };
   }
 
-  const saved = report.games.filter((g) => g.status === "saved");
-  const problems = report.games.filter(
-    (g) => g.status !== "saved" && g.status !== "unchanged",
+  const changed = report.games.filter(
+    (g): g is ReportedGame => g.status !== "unchanged",
   );
 
-  if (saved.length === 0 && problems.length === 0) return null;
+  if (changed.length === 0) return null;
 
-  const unchanged = report.games.filter((g) => g.status === "unchanged");
+  const saved = changed.filter((g) => g.status === "saved");
+  const problems = changed.filter((g) => g.status !== "saved");
 
   return {
-    title: title(saved.length, problems.length),
+    title: title(saved, problems),
     color: problems.length > 0 ? (saved.length > 0 ? yellow : red) : green,
     fields: [...saved, ...problems].map(field),
     description:
-      unchanged.length > 0
-        ? `Unchanged: ${unchanged.map((g) => g.game).join(", ")}`
+      problems.length > 0
+        ? "Skipped boards are picked up again on the next run."
         : undefined,
-    footer: {
-      text: `${report.games.length} games checked in ${(report.durationMs / 1000).toFixed(1)}s`,
-    },
     timestamp: new Date().toISOString(),
   };
 }
 
-function title(saved: number, problems: number): string {
-  if (saved === 0) {
-    return problems === 1 ? "A leaderboard was skipped" : `${problems} leaderboards were skipped`;
+function title(saved: ReportedGame[], problems: ReportedGame[]): string {
+  if (saved.length === 0) {
+    return problems.length === 1
+      ? `${problems[0]!.game} could not be updated`
+      : `${problems.length} leaderboards could not be updated`;
   }
 
-  const updated = saved === 1 ? "Leaderboard updated" : `${saved} leaderboards updated`;
+  const updated = `${saved.length} Leaderboard${saved.length === 1 ? "" : "s"} updated`;
 
   // The title is all a notification shows, so it cannot say only the good half.
-  return problems > 0 ? `${updated}, ${problems} skipped` : updated;
+  return problems.length > 0 ? `${updated}, ${problems.length} skipped` : updated;
 }
 
-function field(g: GameReport) {
-  return { name: `${icon(g)} ${g.game}`, value: value(g), inline: false };
+function field(g: ReportedGame) {
+  const name = g.status === "saved" ? g.game : `⚠️ ${g.game}`;
+  return { name, value: value(g), inline: false };
 }
 
-function icon(g: GameReport): string {
-  return g.status === "saved" ? "🟢" : g.status === "missing" ? "🔴" : "🟡";
-}
-
-function value(g: GameReport): string {
+function value(g: ReportedGame): string {
   switch (g.status) {
-    case "saved": {
-      const players =
-        g.fetched > 0 ? `\n${g.fetched} new ${g.fetched === 1 ? "player" : "players"} resolved from Mojang` : "";
-      return `${g.rows} rows · updated ${relative(g.lastUpdated)}${players}`;
-    }
+    case "saved":
+      return `Board updated ${relative(g.lastUpdated)}`;
     case "partial":
-      return `Returned ${g.rows} rows, expected at least ${g.expected} — partial response, not stored.`;
+      return `Cubepanion only sent ${count(g.rows)} of ${count(g.expected)} players, so this update was skipped.`;
     case "unresolved":
-      return `Resolved ${g.resolved} of ${g.total} players, not stored.\nMissing: ${list(g.missing)}`;
+      return `${count(g.total - g.resolved)} of ${count(g.total)} names could not be matched to a Minecraft account, so this update was skipped.`;
     case "missing":
-      return "No leaderboard returned, or the response did not parse.";
-    case "unchanged":
-      return "Not updated since the last snapshot.";
+      return "Cubepanion did not return this leaderboard.";
   }
+}
+
+function count(n: number): string {
+  return n.toLocaleString("en-US");
 }
 
 /** Discord renders this in the reader's own timezone. */
@@ -134,16 +129,17 @@ function relative(date: Date): string {
   return `<t:${Math.floor(date.getTime() / 1000)}:R>`;
 }
 
-/** Field values cap at 1024 characters and a bad run can miss hundreds. */
-function list(names: string[]): string {
-  const shown = names.slice(0, 10);
-  const rest = names.length - shown.length;
-  return shown.join(", ") + (rest > 0 ? ` and ${rest} more` : "");
+function formatError(error: unknown): string {
+  const text = error instanceof Error ? errorText(error) : String(error);
+  return text.length > 1000 ? `${text.slice(0, 1000)}…` : text;
 }
 
-function formatError(error: unknown): string {
-  const text = error instanceof Error ? (error.stack ?? error.message) : String(error);
-  return text.length > 1000 ? `${text.slice(0, 1000)}…` : text;
+/** Bun does not always prefix the stack with the message. */
+function errorText(error: Error): string {
+  const stack = error.stack ?? "";
+  return stack.includes(error.message)
+    ? stack
+    : `${error.message}\n${stack}`.trim();
 }
 
 function codeBlock(text: string): string {
