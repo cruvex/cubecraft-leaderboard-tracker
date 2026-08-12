@@ -1,48 +1,61 @@
 import { z } from "zod";
+import { sendReport, type GameReport, type RunReport } from "./report";
 
 const cubepanionBaseUrl = "https://cubepanion.ameliah.art/api/v2";
 const mojangBaseUrl = "https://api.mojang.com";
 const trackedGames = ["team_eggwars", "solo_skywars", "free_for_all", "mob_who"];
 
-async function main() {
+async function main(): Promise<RunReport> {
+  const start = Bun.nanoseconds();
+
   // How deep the leaderboards currently go is a server-side setting that
   // Cubecraft changes from time to time, so it is read per run instead of
   // assumed.
   const config = await fetchLeaderboardConfig();
 
-  if (!config) {
-    console.error("Leaderboard config not found");
-    return;
-  }
+  // Thrown rather than returned: without the depth there is nothing to check a
+  // partial response against, so the run cannot safely store anything.
+  if (!config) throw new Error("Leaderboard config not found");
 
   if (!config.enabled) {
     console.log("Leaderboards are currently disabled");
-    return;
+    return { kind: "disabled" };
   }
 
   console.log(`Leaderboards hold ${config.playerCount} players`);
 
   const games = await fetchGames();
+  const reports: GameReport[] = [];
 
   for (const gameName of trackedGames) {
     const game = games.find((g) => g.name === gameName);
 
     if (!game) {
       console.error(`Game not found: ${gameName}`);
+      reports.push({ game: gameName, status: "missing" });
       continue;
     }
 
-    await processGame(game, config.playerCount);
+    reports.push(await processGame(game, config.playerCount));
   }
+
+  return {
+    kind: "run",
+    games: reports,
+    durationMs: (Bun.nanoseconds() - start) / 1_000_000,
+  };
 }
 
-async function processGame(game: Game, playerCount: number) {
+async function processGame(
+  game: Game,
+  playerCount: number,
+): Promise<GameReport> {
   console.log(`Fetching leaderboard for ${game.displayName} (${game.id})`);
   const leaderboard = await fetchGameLeaderboard(game?.name);
 
   if (!leaderboard) {
     console.log(`Leaderboard not found for ${game.displayName}`);
-    return;
+    return { game: game.displayName, status: "missing" };
   }
 
   console.log(`Current leaderboard last updated: `, leaderboard.lastUpdated);
@@ -53,43 +66,61 @@ async function processGame(game: Game, playerCount: number) {
   const isNewSnapshot =
     !lastSavedSnapshot || new Date(leaderboard.lastUpdated) > lastSavedSnapshot;
 
-  if (isNewSnapshot) {
-    // A board shallower than the configured depth is a partial response rather
-    // than a smaller leaderboard, and storing it would fabricate departures for
-    // everyone below the cut. Only the floor is enforced because some games are
-    // still served deeper than the global config claims.
-    if (leaderboard.rows.length < playerCount) {
-      console.log(
-        `Leaderboard returned ${leaderboard.rows.length} rows (expected at least ${playerCount})`,
-      );
-
-      return;
-    }
-
-    const igns = leaderboard.rows.map((row: LeaderboardPosition) => row.player);
-
-    const uuidMap = await resolvePlayerUUIDs(igns);
-
-    // Expect every uuid to be resolved: leaderboard_rows.player is a uuid column,
-    // so a player Mojang does not know cannot be stored at all.
-    if (uuidMap.size != leaderboard.rows.length) {
-      console.log(
-        `Resolved ${uuidMap.size} of ${leaderboard.rows.length} players`,
-      );
-
-      return;
-    }
-
-    await saveGameLeaderboardSnapshot(leaderboard, uuidMap);
-    console.log("Leaderboard snapshot saved");
-  } else {
+  if (!isNewSnapshot) {
     console.log("Leaderboard not updated since last snapshot");
+    return { game: game.displayName, status: "unchanged" };
   }
+
+  // A board shallower than the configured depth is a partial response rather
+  // than a smaller leaderboard, and storing it would fabricate departures for
+  // everyone below the cut. Only the floor is enforced because some games are
+  // still served deeper than the global config claims.
+  if (leaderboard.rows.length < playerCount) {
+    console.log(
+      `Leaderboard returned ${leaderboard.rows.length} rows (expected at least ${playerCount})`,
+    );
+
+    return {
+      game: game.displayName,
+      status: "partial",
+      rows: leaderboard.rows.length,
+      expected: playerCount,
+    };
+  }
+
+  const igns = leaderboard.rows.map((row: LeaderboardPosition) => row.player);
+
+  const { uuidMap, fetched, notFound } = await resolvePlayerUUIDs(igns);
+
+  // Expect every uuid to be resolved: leaderboard_rows.player is a uuid column,
+  // so a player Mojang does not know cannot be stored at all.
+  if (uuidMap.size != leaderboard.rows.length) {
+    console.log(
+      `Resolved ${uuidMap.size} of ${leaderboard.rows.length} players`,
+    );
+
+    return {
+      game: game.displayName,
+      status: "unresolved",
+      resolved: uuidMap.size,
+      total: leaderboard.rows.length,
+      missing: notFound,
+    };
+  }
+
+  await saveGameLeaderboardSnapshot(leaderboard, uuidMap);
+  console.log("Leaderboard snapshot saved");
+
+  return {
+    game: game.displayName,
+    status: "saved",
+    rows: leaderboard.rows.length,
+    lastUpdated: leaderboard.lastUpdated,
+    fetched,
+  };
 }
 
-async function resolvePlayerUUIDs(
-  igns: string[],
-): Promise<Map<string, string>> {
+async function resolvePlayerUUIDs(igns: string[]): Promise<ResolvedPlayers> {
   const cachedPlayers = await getCachedPlayers(igns);
   const cachedIgns = new Set(cachedPlayers.map((p) => p.ign.toLowerCase()));
 
@@ -97,6 +128,7 @@ async function resolvePlayerUUIDs(
   console.log(`${uncachedIgns.length} players not found in DB cache`);
 
   let unknownPlayers: PlayerProfile[] = [];
+  let notFound: string[] = [];
 
   if (uncachedIgns.length > 0) {
     unknownPlayers = await fetchUnknownPlayers(uncachedIgns);
@@ -106,7 +138,7 @@ async function resolvePlayerUUIDs(
       await insertCachedPlayers(unknownPlayers);
     }
 
-    const notFound = uncachedIgns.filter(
+    notFound = uncachedIgns.filter(
         ign => !unknownPlayers.some(p => p.ign === ign)
     );
 
@@ -121,7 +153,7 @@ async function resolvePlayerUUIDs(
     uuidMap.set(player.ign.toLowerCase(), player.uuid);
   });
 
-  return uuidMap;
+  return { uuidMap, fetched: unknownPlayers.length, notFound };
 }
 
 async function saveGameLeaderboardSnapshot(
@@ -339,6 +371,12 @@ type PlayerTextureRow = {
   updated_at: Date;
 };
 
+type ResolvedPlayers = {
+  uuidMap: Map<string, string>;
+  fetched: number;
+  notFound: string[];
+};
+
 const LeaderboardPositionSchema = z.object({
   gameId: z.number(),
   position: z.number(),
@@ -380,6 +418,13 @@ type Game = z.infer<typeof GameSchema>;
 
 const GameResponse = z.array(GameSchema);
 
-await main();
+// A cron run that dies is invisible unless it says so, so the throw is caught
+// here only to report it.
+try {
+  await sendReport(await main());
+} catch (err) {
+  console.error(err);
+  await sendReport({ kind: "failed", error: err });
+}
 
 process.exit(0);
