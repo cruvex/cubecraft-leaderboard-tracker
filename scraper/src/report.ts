@@ -5,6 +5,9 @@
  */
 const webhookUrl = process.env.DISCORD_WEBHOOK_URL;
 
+/** Pinged on any run that did not do everything it was supposed to. */
+const ownerId = "255361968037167105";
+
 const green = 0x57f287;
 const yellow = 0xfee75c;
 const red = 0xed4245;
@@ -30,11 +33,17 @@ export async function sendReport(report: RunReport) {
   const embed = buildEmbed(report);
   if (!embed) return;
 
+  // Only a mention in the message body notifies: one inside an embed renders as
+  // a link and nothing else.
+  const mention = needsAttention(report)
+    ? { content: `<@${ownerId}>`, allowed_mentions: { users: [ownerId] } }
+    : {};
+
   try {
     const res = await fetch(webhookUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ embeds: [embed] }),
+      body: JSON.stringify({ ...mention, embeds: [embed] }),
       signal: AbortSignal.timeout(10_000),
     });
 
@@ -45,6 +54,15 @@ export async function sendReport(report: RunReport) {
     // A scrape that worked is not a failed run just because Discord was down.
     console.error("Failed to post report:", err);
   }
+}
+
+/** Anything short of every tracked board being up to date. */
+function needsAttention(report: RunReport): boolean {
+  if (report.kind !== "run") return true;
+
+  return report.games.some(
+    (g) => g.status !== "saved" && g.status !== "unchanged",
+  );
 }
 
 /** Returns null for a run not worth posting. */
