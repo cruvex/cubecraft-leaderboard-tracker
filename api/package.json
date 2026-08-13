@@ -1,5 +1,5 @@
 {
-  "name": "cubecraft-leaderboard-dashboard-api",
+  "name": "api",
   "scripts": {
     "start": "bun src/index.ts",
     "migrate": "bun src/migrate.ts"
