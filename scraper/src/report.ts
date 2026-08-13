@@ -112,11 +112,11 @@ function value(g: ReportedGame): string {
     case "saved":
       return `Board updated ${relative(g.lastUpdated)}`;
     case "partial":
-      return `Cubepanion only sent ${count(g.rows)} of ${count(g.expected)} players, so this update was skipped.`;
+      return `Skipped: Cubepanion returned an incomplete leaderboard (${count(g.rows)} of ${count(g.expected)} players)`;
     case "unresolved":
-      return `${count(g.total - g.resolved)} of ${count(g.total)} names could not be matched to a Minecraft account, so this update was skipped.`;
+      return `Skipped: ${count(g.total - g.resolved)} of ${count(g.total)} names could not be matched to a Minecraft account`;
     case "missing":
-      return "Cubepanion did not return this leaderboard.";
+      return `Skipped: Cubepanion did not return this leaderboard`;
   }
 }
 
