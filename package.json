@@ -8,7 +8,9 @@
     "api:dev": "bun --hot api/src/index.ts",
     "api:migrate": "bun api/src/migrate.ts",
     "api:bench": "bun api/src/bench.ts",
-    "db:refresh": "bun scripts/refresh-db.ts"
+    "db:refresh": "bun scripts/refresh-db.ts",
+    "iac:plan": "railway config plan",
+    "iac:apply": "railway config apply"
   },
   "devDependencies": {
     "@types/bun": "latest",
