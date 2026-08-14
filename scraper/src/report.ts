@@ -1,7 +1,6 @@
 /**
  * Posts a run summary to a Discord webhook. Sends nothing when
- * DISCORD_WEBHOOK_URL is unset, or when the run changed nothing -- the cron
- * runs every 15 minutes and Cubepanion updates far less often.
+ * DISCORD_WEBHOOK_URL is unset, or when the run changed nothing.
  */
 const webhookUrl = process.env.DISCORD_WEBHOOK_URL;
 
@@ -128,7 +127,7 @@ function field(g: ReportedGame) {
 function value(g: ReportedGame): string {
   switch (g.status) {
     case "saved":
-      return `Board updated ${relative(g.lastUpdated)}`;
+      return `Board updated ${full(g.lastUpdated)} | ${relative(g.lastUpdated)}`;
     case "partial":
       return `Skipped: Cubepanion returned an incomplete leaderboard (${count(g.rows)} of ${count(g.expected)} players)`;
     case "unresolved":
@@ -142,9 +141,16 @@ function count(n: number): string {
   return n.toLocaleString("en-US");
 }
 
-/** Discord renders this in the reader's own timezone. */
+function full(date: Date): string {
+  return `<t:${seconds(date)}:F>`;
+}
+
 function relative(date: Date): string {
-  return `<t:${Math.floor(date.getTime() / 1000)}:R>`;
+  return `<t:${seconds(date)}:R>`;
+}
+
+function seconds(date: Date): number {
+  return Math.floor(date.getTime() / 1000);
 }
 
 function formatError(error: unknown): string {
