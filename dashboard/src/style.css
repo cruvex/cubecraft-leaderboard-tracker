@@ -98,6 +98,17 @@ body {
   gap: 1rem;
 }
 
+.discord-link {
+  display: flex;
+  align-items: center;
+  color: var(--text);
+  line-height: 0;
+}
+
+.discord-link:hover {
+  color: #5865f2;
+}
+
 #gameSelector,
 #comparisonTimeframe {
   color-scheme: light;
