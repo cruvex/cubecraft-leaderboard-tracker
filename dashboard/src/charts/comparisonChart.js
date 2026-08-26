@@ -95,6 +95,28 @@ export async function loadComparisonChart(players = null) {
   }
 }
 
+/**
+ * Add one player to the chart, fetching only their history and appending it to
+ * the cached series.
+ * @param {{ uuid: string, ign: string }} player
+ */
+export async function appendComparisonPlayer(player) {
+  const loading = el("comparisonChartLoading");
+  loading.style.display = "flex";
+
+  try {
+    const { currentGame, comparisonDays } = state;
+    const path = endpoints.playersHistory(currentGame.id, [player.uuid], comparisonDays);
+    const added = (await apiFetch(path)) || [];
+    state.comparisonData = [...(state.comparisonData || []), ...added];
+    renderComparisonChart(state.comparisonData);
+  } catch (err) {
+    console.error("Failed to add player to comparison chart", err);
+  } finally {
+    loading.style.display = "none";
+  }
+}
+
 export function renderComparisonChart(players) {
   const ctx = el("comparisonChart").getContext("2d");
 

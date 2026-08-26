@@ -10,6 +10,7 @@ import { state } from "./state.js";
 import { apiFetch, endpoints } from "./api.js";
 import {
   loadComparisonChart,
+  appendComparisonPlayer,
   renderComparisonChart,
   highlightComparisonLine,
 } from "./charts/comparisonChart.js";
@@ -53,7 +54,11 @@ function setSelection(players) {
 function addPlayer(player) {
   if (!player?.ign || isSelected(player)) return;
   // Adding from the default view keeps the current top gainers and appends.
-  setSelection([...currentPlayers(), player]);
+  state.comparisonPlayers = [...currentPlayers(), player];
+  saveComparisonState();
+  renderSelection();
+  // No full refetch: only the new player is fetched and merged into the cache.
+  appendComparisonPlayer(player);
 }
 
 /**
