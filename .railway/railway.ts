@@ -5,6 +5,7 @@ import {
   project,
   service,
   volume,
+  preserve
 } from "railway/iac";
 
 const REGION = "europe-west4-drams3a";
@@ -17,12 +18,12 @@ const API_PORT = 8080;
 export default defineRailway((ctx) => {
   // Both hostnames below are globally unique in Railway, so a non-prod
   // environment must not claim them or it takes them off production.
-  const isProd = ctx.isEnvironment("production");
+  const isProd = ctx.environment === "production";
 
   // Temporary: lets non-prod build scraper/Dockerfile before it reaches main.
   const BRANCH = isProd ? "main" : "feat/railway-IaC";
 
-  const db = postgres("Postgres");
+  const pg = postgres("Postgres");
 
   const pgData = volume("postgres-volume", {
     sizeMB: 5000,
@@ -44,7 +45,7 @@ export default defineRailway((ctx) => {
     // Declared, or Railway reports a networking diff on every plan.
     networking: { privateNetworkEndpoint: "api" },
     env: {
-      DATABASE_URL: db.env.DATABASE_URL,
+      DATABASE_URL: pg.env.DATABASE_URL,
       PORT: String(API_PORT),
     },
   });
@@ -59,12 +60,13 @@ export default defineRailway((ctx) => {
     },
     deploy: {
       // 30 February never occurs, so non-prod is scheduled but never fires.
-      cronSchedule: isProd ? "*/15 * * * *" : "0 0 30 2 *",
+      cronSchedule: isProd ? "*/15 * * * *" : null,
       restartPolicyType: "NEVER",
     },
     networking: { privateNetworkEndpoint: "scraper" },
     env: {
-      DATABASE_URL: db.env.DATABASE_URL,
+      DATABASE_URL: pg.env.DATABASE_URL,
+      DISCORD_WEBHOOK_URL: preserve(),
     },
   });
 
@@ -91,6 +93,6 @@ export default defineRailway((ctx) => {
   });
 
   return project("CubeCraft", {
-    resources: [db, pgData, api, scraper, dashboard],
+    resources: [pg, pgData, api, scraper, dashboard],
   });
 });
