@@ -1,6 +1,8 @@
 import { startHealthServer } from "./health";
 import { Scheduler } from "./scheduler";
+import { gamePlayers } from "./tasks/game-players";
 import { leaderboards } from "./tasks/leaderboards";
+import { serverStatus } from "./tasks/server-status";
 
 // Scheduling lives here because Railway cron cannot run more often than every 5 minutes.
 
@@ -10,7 +12,7 @@ if (!process.env.DATABASE_URL) {
   process.exit(1);
 }
 
-const scheduler = new Scheduler([leaderboards]);
+const scheduler = new Scheduler([leaderboards, serverStatus, gamePlayers]);
 scheduler.start();
 
 const health = startHealthServer(scheduler);
