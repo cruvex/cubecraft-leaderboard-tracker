@@ -2,6 +2,7 @@ import { z } from "zod";
 import { sendReport, type GameReport, type RunReport } from "./report";
 
 const cubepanionBaseUrl = "https://cubepanion.ameliah.art/api/v2";
+const userAgent = "CubeCraftPlus-scraper";
 const mojangBaseUrl = "https://api.mojang.com";
 const trackedGames = ["team_eggwars", "solo_skywars", "free_for_all", "mob_who"];
 
@@ -261,7 +262,9 @@ async function insertCachedPlayers(players: PlayerProfile[]): Promise<void> {
 async function fetchGameLeaderboard(
   game: string,
 ): Promise<Leaderboard | undefined> {
-  const res = await fetch(`${cubepanionBaseUrl}/Leaderboard/game/${game}`);
+  const res = await fetch(`${cubepanionBaseUrl}/Leaderboard/game/${game}`, {
+    headers: { "User-Agent": userAgent },
+  });
   const json = await res.json();
 
   const parsed = LeaderboardSchema.safeParse(json);
@@ -275,7 +278,9 @@ async function fetchGameLeaderboard(
 }
 
 async function fetchLeaderboardConfig(): Promise<LeaderboardConfig | undefined> {
-  const res = await fetch(`${cubepanionBaseUrl}/Leaderboard/config`);
+  const res = await fetch(`${cubepanionBaseUrl}/Leaderboard/config`, {
+    headers: { "User-Agent": userAgent },
+  });
   const json = await res.json();
 
   const parsed = LeaderboardConfigSchema.safeParse(json);
@@ -289,7 +294,9 @@ async function fetchLeaderboardConfig(): Promise<LeaderboardConfig | undefined> 
 }
 
 async function fetchGames(): Promise<Game[]> {
-  const res = await fetch(`${cubepanionBaseUrl}/Games`);
+  const res = await fetch(`${cubepanionBaseUrl}/Games`, {
+    headers: { "User-Agent": userAgent },
+  });
   const json = await res.json();
 
   const parsed = GameResponse.safeParse(json);

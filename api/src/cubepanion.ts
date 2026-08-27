@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 const cubepanionBaseUrl = "https://cubepanion.ameliah.art/api/v2";
+const userAgent = "CubeCraftPlus-api";
 
 const GameSchema = z.object({
   id: z.number(),
@@ -16,7 +17,9 @@ const GameSchema = z.object({
 export type Game = z.infer<typeof GameSchema>;
 
 export async function fetchGames(): Promise<Game[]> {
-  const res = await fetch(`${cubepanionBaseUrl}/Games`);
+  const res = await fetch(`${cubepanionBaseUrl}/Games`, {
+    headers: { "User-Agent": userAgent },
+  });
   const json = await res.json();
   const parsed = z.array(GameSchema).safeParse(json);
   if (!parsed.success) {
