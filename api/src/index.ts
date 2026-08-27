@@ -20,13 +20,14 @@ async function resolvePlayerId(id: string): Promise<string | null> {
 }
 
 // Route Handlers
+
 async function handleTopGainers(req: Request, params: { gameId: string }) {
     const url = new URL(req.url);
     const days = Number(url.searchParams.get("days") || 30);
     const gameId = Number(params.gameId);
     if (isNaN(gameId)) return jsonResponse({ error: "Invalid gameId" }, 400);
-    const out = await getTopGainers(days, gameId);
-    return jsonResponse(out);
+    const result = await getTopGainers(days, gameId);
+    return jsonResponse(result);
 }
 
 async function handleTopGainersHistory(req: Request, params: { gameId: string }) {
@@ -35,12 +36,11 @@ async function handleTopGainersHistory(req: Request, params: { gameId: string })
     const limit = Number(url.searchParams.get("limit") || 10);
     const gameId = Number(params.gameId);
     if (isNaN(gameId)) return jsonResponse({ error: "Invalid gameId" }, 400);
-    const out = await getTopGainersHistory(days, gameId, limit);
-    return jsonResponse(out);
+    const result = await getTopGainersHistory(days, gameId, limit);
+    return jsonResponse(result);
 }
 
 // Generic batch history for an explicit player set (uuids or igns via ?ids=a,b,c).
-// Backs the comparison chart once the client supports custom selections.
 async function handlePlayersHistory(req: Request, params: { gameId: string }) {
     const url = new URL(req.url);
     const days = Number(url.searchParams.get("days") || 30);
@@ -52,17 +52,15 @@ async function handlePlayersHistory(req: Request, params: { gameId: string }) {
         .map((s) => s.trim())
         .filter(Boolean);
 
-    // Accept either UUIDs or IGNs. UUIDs are at least 32 chars while Minecraft
-    // IGNs are at most 16, so length alone tells them apart. IGNs are resolved
-    // in one batch query; the dashboard always sends UUIDs and skips this.
+    // Accept either UUIDs or IGNs.
     const igns = ids.filter((id) => id.length < 32);
     const uuidByIgn = await getUuidsByIgns(igns);
     const uuids = ids
         .map((id) => (id.length >= 32 ? id : uuidByIgn.get(id.toLowerCase())))
         .filter((id): id is string => !!id); // unresolved IGNs are dropped
 
-    const out = await getPlayersHistory(uuids, days, gameId);
-    return jsonResponse(out);
+    const result = await getPlayersHistory(uuids, days, gameId);
+    return jsonResponse(result);
 }
 
 async function handlePlayerScores(req: Request, params: { gameId: string, id: string }) {
@@ -74,11 +72,11 @@ async function handlePlayerScores(req: Request, params: { gameId: string, id: st
     const days = Number(url.searchParams.get("days") || 30);
     const gameId = Number(params.gameId);
     if (isNaN(gameId)) return jsonResponse({ error: "Invalid gameId" }, 400);
-    const data = await getPlayerScores(id, days, gameId);
-    if (!data) {
+    const result = await getPlayerScores(id, days, gameId);
+    if (!result) {
         return jsonResponse({ error: "Player scores not found" }, 404);
     }
-    return jsonResponse(data);
+    return jsonResponse(result);
 }
 
 async function handleGames() {
@@ -90,15 +88,15 @@ async function handleSearchPlayers(req: Request) {
     const url = new URL(req.url);
     const q = url.searchParams.get("q")?.trim() ?? "";
     if (q.length < 2) return jsonResponse([]);
-    const results = await searchPlayers(q);
-    return jsonResponse(results);
+    const result = await searchPlayers(q);
+    return jsonResponse(result);
 }
 
 async function handleLeaderboard (req: Request, params: { gameId: string })  {
     const url = new URL(req.url);
     const days = Number(url.searchParams.get("days") || 30);
-    const out = await getLeaderboard(params.gameId, days);
-    return jsonResponse(out);
+    const result = await getLeaderboard(params.gameId, days);
+    return jsonResponse(result);
 }
 
 // Main server
