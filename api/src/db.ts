@@ -240,6 +240,69 @@ export async function getPlayerScores(uuid: string, days = 30, gameId: number) {
 }
 
 /**
+ * Concurrent-player readings for one game, downsampled into buckets.
+ * Each bucket keeps its LAST reading; an average would invent counts like 132.5
+ * that were never observed. Empty buckets are omitted: the previous reading
+ * still stood. `latest` ignores the window so a dead game can still say when it
+ * last reported.
+ */
+export async function getGamePopulation(gameId: number, hours = 24, bucketSeconds = 300) {
+  const buckets = await Bun.sql`
+    WITH readings AS (
+      SELECT
+        to_timestamp(
+          floor(extract(epoch FROM timestamp) / ${bucketSeconds}) * ${bucketSeconds}
+        ) AS bucket,
+        timestamp,
+        players
+      FROM game_player_counts
+      WHERE game_id = ${gameId}
+        AND timestamp >= NOW() - CAST(${hours + " hours"} AS INTERVAL)
+    )
+    SELECT DISTINCT ON (bucket)
+      bucket,
+      players,
+      MAX(players) OVER ()           AS window_peak,
+      (AVG(players) OVER ())::float8 AS window_average
+    FROM readings
+    ORDER BY bucket, timestamp DESC
+  `;
+
+  const [latest] = await Bun.sql`
+    SELECT timestamp, players
+    FROM game_player_counts
+    WHERE game_id = ${gameId}
+    ORDER BY timestamp DESC
+    LIMIT 1
+  `;
+
+  const rows = (buckets || []).map((r: any) => ({
+    timestamp: r.bucket instanceof Date ? r.bucket.toISOString() : String(r.bucket),
+    players: Number(r.players),
+  }));
+
+  // Both window functions repeat the same value on every row.
+  const [aggregate] = (buckets || []) as any[];
+
+  return {
+    gameId,
+    bucketSeconds,
+    rows,
+    peak: aggregate ? Number(aggregate.window_peak) : null,
+    average: aggregate ? Number(aggregate.window_average) : null,
+    latest: latest
+      ? {
+          timestamp:
+            latest.timestamp instanceof Date
+              ? latest.timestamp.toISOString()
+              : String(latest.timestamp),
+          players: Number(latest.players),
+        }
+      : null,
+  };
+}
+
+/**
  * Batch-resolve IGNs to UUIDs in one query (case-insensitive, latest IGN wins).
  * Returns a map keyed by lowercased IGN; IGNs with no match are absent.
  */

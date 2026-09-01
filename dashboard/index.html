@@ -162,6 +162,47 @@
         </div>
       </div>
 
+      <div class="card population-card">
+        <div class="card-title">
+          <span><span class="gameDisplayName">Game</span> Players Online</span>
+          <div class="toggle-group" id="populationRangeToggle">
+            <button class="toggle-btn active" data-hours="24">24H</button>
+            <button class="toggle-btn" data-hours="168">7D</button>
+            <button class="toggle-btn" data-hours="720">30D</button>
+          </div>
+        </div>
+        <div class="card-description">
+          <span class="desc-item">
+            Concurrent players in <span class="gameDisplayName">this game</span>, from the Cubepanion
+            addon. Readings arrive irregularly, so the line holds each value until the next and
+            breaks where reporting stopped. These numbers are best effort. CubeCraft does not publish
+            player counts, so Cubepanion scrapes them off the server. We are looking into other
+            ways of retrieving it.
+          </span>
+        </div>
+
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div id="populationNowLabel" class="stat-label">Now</div>
+            <div id="populationNow" class="stat-value">—</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Peak</div>
+            <div id="populationPeak" class="stat-value">—</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Average</div>
+            <div id="populationAverage" class="stat-value">—</div>
+          </div>
+        </div>
+
+        <div class="chart-wrapper" style="height: 300px;">
+          <div id="populationLoading" class="loading-overlay">Loading chart...</div>
+          <div id="populationEmpty" class="loading-overlay"></div>
+          <canvas id="populationChart"></canvas>
+        </div>
+      </div>
+
       <div class="card leaderboard-card">
         <div class="card-title" id="leaderboardTitle">Full Leaderboard</div>
         <div class="card-description">

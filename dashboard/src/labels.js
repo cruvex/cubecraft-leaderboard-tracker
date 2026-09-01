@@ -15,6 +15,9 @@ export function updateScoreTypeLabels() {
   document.querySelectorAll(".currentTypeLabel").forEach((e) => {
     e.textContent = state.displayMode === "wins" ? `Total ${scoreType}` : "Position";
   });
+  document.querySelectorAll(".gameDisplayName").forEach((e) => {
+    e.textContent = state.currentGame?.displayName || "This game";
+  });
 }
 
 /** Update the leaderboard card's descriptive copy for the current timeframe. */

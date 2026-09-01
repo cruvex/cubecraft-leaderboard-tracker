@@ -9,6 +9,7 @@ import { loadTopGainers } from "./topGainers.js";
 import { loadPlayerProfile } from "./playerProfile.js";
 import { renderPlayerChart, updatePlayerChartTheme } from "./charts/playerChart.js";
 import { loadLeaderboard, updateLeaderboardChartTheme } from "./charts/leaderboardChart.js";
+import { loadGamePopulation, updatePopulationChartTheme } from "./charts/populationChart.js";
 import {
   loadComparisonChart,
   renderComparisonChart,
@@ -68,9 +69,25 @@ async function init() {
       loadTopGainers();
       loadComparisonChart(state.comparisonPlayers);
       loadLeaderboard();
+      loadGamePopulation();
       if (state.currentPlayer) {
         loadPlayerProfile(state.currentPlayer.ign, true);
       }
+    };
+
+    // The population chart keeps its own timeframe: its readings are minutes
+    // apart, so it wants a 24h view the global 7D/30D toggle cannot express.
+    el("populationRangeToggle").onclick = (e) => {
+      const btn = e.target.closest(".toggle-btn");
+      if (!btn || btn.classList.contains("active")) return;
+
+      el("populationRangeToggle")
+        .querySelectorAll(".toggle-btn")
+        .forEach((b) => b.classList.remove("active"));
+      btn.classList.add("active");
+      state.populationHours = Number(btn.dataset.hours);
+
+      loadGamePopulation();
     };
 
     el("daysToggle").onclick = (e) => {
@@ -125,6 +142,7 @@ async function init() {
       loadTopGainers(),
       loadComparisonChart(state.comparisonPlayers),
       loadLeaderboard(),
+      loadGamePopulation(),
       initialPlayerIgn ? loadPlayerProfile(initialPlayerIgn) : Promise.resolve(),
     ]);
     if (!initialPlayerIgn) {
@@ -159,6 +177,7 @@ async function init() {
         updatePlayerChartTheme();
         updateLeaderboardChartTheme();
         updateComparisonChartTheme();
+        updatePopulationChartTheme();
       }
     });
   });

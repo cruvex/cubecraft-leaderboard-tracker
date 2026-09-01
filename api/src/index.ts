@@ -1,4 +1,4 @@
-import { getUuidByIgn, getUuidsByIgns, getTopGainers, getTopGainersHistory, getPlayersHistory, getPlayerScores, getLeaderboard, searchPlayers } from "./db";
+import { getUuidByIgn, getUuidsByIgns, getTopGainers, getTopGainersHistory, getPlayersHistory, getPlayerScores, getLeaderboard, getGamePopulation, searchPlayers } from "./db";
 import { fetchGames } from "./cubepanion";
 
 const PORT = process.env.PORT ? Number(process.env.PORT) : 4000;
@@ -79,6 +79,25 @@ async function handlePlayerScores(req: Request, params: { gameId: string, id: st
     return jsonResponse(result);
 }
 
+// Clamped, unlike the other routes: this table grows by the minute, and two
+// years at 60-second resolution would scan the lot.
+async function handleGamePopulation(req: Request, params: { gameId: string }) {
+    const url = new URL(req.url);
+    const gameId = Number(params.gameId);
+    if (isNaN(gameId)) return jsonResponse({ error: "Invalid gameId" }, 400);
+
+    const hours = clamp(Number(url.searchParams.get("hours") || 24), 1, 8760);
+    const bucket = clamp(Number(url.searchParams.get("bucket") || 300), 60, 86400);
+
+    const result = await getGamePopulation(gameId, hours, bucket);
+    return jsonResponse(result);
+}
+
+function clamp(value: number, min: number, max: number) {
+    if (isNaN(value)) return min;
+    return Math.min(Math.max(Math.round(value), min), max);
+}
+
 async function handleGames() {
     const games = await fetchGames();
     return jsonResponse(games);
@@ -110,6 +129,7 @@ Bun.serve({
         "/api/games/:gameId/player/:id": (req) => handlePlayerScores(req, req.params as { gameId: string, id: string }),
         "/api/games": handleGames,
         "/api/games/:gameId/leaderboard": (req) => handleLeaderboard(req, req.params as { gameId: string }),
+        "/api/games/:gameId/population": (req) => handleGamePopulation(req, req.params as { gameId: string }),
         "/api/search/players": handleSearchPlayers,
         "/api/healthz": () => new Response("OK", { status: 200 }),
     },

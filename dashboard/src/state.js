@@ -39,6 +39,9 @@ export const state = {
    */
   comparisonHidden: new Set(),
 
+  /** Timeframe in hours for the population chart; values in charts/populationChart.js. */
+  populationHours: 24,
+
   // --- Search autocomplete ---
   autocompleteSelectedIndex: -1,
 };

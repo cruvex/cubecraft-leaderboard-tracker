@@ -49,6 +49,10 @@ export const endpoints = {
 
   leaderboard: (gameId, days) => `/games/${gameId}/leaderboard${qs({ days })}`,
 
+  /** Concurrent-player readings for one game; `bucket` is in seconds. */
+  gamePopulation: (gameId, hours, bucket) =>
+    `/games/${gameId}/population${qs({ hours, bucket })}`,
+
   /** Autocomplete search; returns { uuid, ign } pairs. */
   searchPlayers: (q) => `/search/players${qs({ q })}`,
 };

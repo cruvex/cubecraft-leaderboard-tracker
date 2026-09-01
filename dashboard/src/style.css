@@ -831,7 +831,8 @@ tr.clickable:hover .tg-rank .add-to-comparison-btn {
    Leaderboard
    ================================================ */
 .leaderboard-card,
-.comparison-chart-card {
+.comparison-chart-card,
+.population-card {
   grid-column: 1 / -1;
 }
 
