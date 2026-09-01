@@ -46,4 +46,23 @@ export const state = {
   autocompleteSelectedIndex: -1,
 };
 
+// --- Change notification ---
+// A module registers its own loader against the topics it depends on, so adding
+// a card touches only that module.
+
+/** @type {Map<string, Set<Function>>} */
+const subscribers = new Map();
+
+export function subscribe(topics, fn) {
+  for (const topic of topics) {
+    if (!subscribers.has(topic)) subscribers.set(topic, new Set());
+    subscribers.get(topic).add(fn);
+  }
+}
+
+/** Parallel; rejects if any subscriber does, so init's catch still sees failures. */
+export function notify(topic) {
+  return Promise.all([...(subscribers.get(topic) ?? [])].map((fn) => fn()));
+}
+
 export const enabledGames = ["team_eggwars", "solo_skywars", "free_for_all", "mob_who"];

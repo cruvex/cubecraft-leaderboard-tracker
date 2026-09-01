@@ -6,8 +6,10 @@
 // controls (see state.comparison*).
 import { Chart } from "./register.js";
 import { el, getStyle } from "../dom.js";
-import { state } from "../state.js";
+import { state, subscribe } from "../state.js";
 import { apiFetch, endpoints } from "../api.js";
+
+subscribe(["game"], () => loadComparisonChart(state.comparisonPlayers));
 
 const PLAYER_COLORS = [
   "#3b82f6", "#ef4444", "#10b981", "#f59e0b", "#8b5cf6",

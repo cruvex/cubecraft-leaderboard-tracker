@@ -1,8 +1,8 @@
 // Sidebar "Top Gainers" table.
 import { el } from "./dom.js";
-import { state } from "./state.js";
+import { state, subscribe } from "./state.js";
 import { apiFetch, endpoints } from "./api.js";
-import { updateScoreTypeLabels } from "./labels.js";
+import { renderLabels } from "./labels.js";
 import { loadPlayerProfile, scrollToPlayerProfile } from "./playerProfile.js";
 import { addToComparison, isInComparison } from "./comparisonSelection.js";
 
@@ -22,6 +22,8 @@ function syncTopGainersButtons() {
 
 // Keep the buttons in sync whenever the comparison changes (add/remove/reset).
 document.addEventListener("comparison:rendered", syncTopGainersButtons);
+
+subscribe(["game", "days"], loadTopGainers);
 
 export async function loadTopGainers() {
   const container = el("topGainers");
@@ -52,7 +54,7 @@ function renderTopGainers(data) {
       <tr>
         <th class="text-center">#</th>
         <th class="text-center">Player</th>
-        <th class="text-center leaderboardScoreType">Wins</th>
+        <th class="text-center" data-label="scoreType">Wins</th>
       </tr>
     </thead>
     <tbody></tbody>
@@ -99,5 +101,5 @@ function renderTopGainers(data) {
   });
   container.innerHTML = "";
   container.appendChild(table);
-  updateScoreTypeLabels();
+  renderLabels(table);
 }

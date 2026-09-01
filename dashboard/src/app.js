@@ -1,15 +1,14 @@
 // Entry point: bootstraps the dashboard and wires up the top-level controls.
 // Feature logic lives in the imported modules.
-import { state, enabledGames } from "./state.js";
+import { state, enabledGames, notify } from "./state.js";
 import { el } from "./dom.js";
 import { apiFetch, endpoints } from "./api.js";
 import { parseInitialPath, updatePath } from "./router.js";
 import { updateLeaderboardDescription } from "./labels.js";
-import { loadTopGainers } from "./topGainers.js";
 import { loadPlayerProfile } from "./playerProfile.js";
-import { renderPlayerChart, updatePlayerChartTheme } from "./charts/playerChart.js";
-import { loadLeaderboard, updateLeaderboardChartTheme } from "./charts/leaderboardChart.js";
-import { loadGamePopulation, updatePopulationChartTheme } from "./charts/populationChart.js";
+import { updatePlayerChartTheme } from "./charts/playerChart.js";
+import { updateLeaderboardChartTheme } from "./charts/leaderboardChart.js";
+import { updatePopulationChartTheme } from "./charts/populationChart.js";
 import {
   loadComparisonChart,
   renderComparisonChart,
@@ -18,6 +17,11 @@ import {
 import { setupSearch } from "./search.js";
 import { setupComparisonSelection } from "./comparisonSelection.js";
 import { loadComparisonState, saveComparisonState } from "./comparisonStore.js";
+
+// Side-effect imports: they register themselves and export nothing, so they look
+// removable. Dropping them drops the modules from the bundle entirely.
+import "./topGainers.js";
+import "./elements/theme-toggle.js";
 
 async function init() {
   const { gameName: initialGameName, playerIgn: initialPlayerIgn, redirect } = parseInitialPath();
@@ -66,13 +70,7 @@ async function init() {
       if (state.currentPlayer) state.currentPlayer.data = null;
       updateLeaderboardDescription();
       updatePath();
-      loadTopGainers();
-      loadComparisonChart(state.comparisonPlayers);
-      loadLeaderboard();
-      loadGamePopulation();
-      if (state.currentPlayer) {
-        loadPlayerProfile(state.currentPlayer.ign, true);
-      }
+      notify("game");
     };
 
     // The population chart keeps its own timeframe: its readings are minutes
@@ -87,7 +85,7 @@ async function init() {
       btn.classList.add("active");
       state.populationHours = Number(btn.dataset.hours);
 
-      loadGamePopulation();
+      notify("populationHours");
     };
 
     el("daysToggle").onclick = (e) => {
@@ -102,12 +100,7 @@ async function init() {
 
       updateLeaderboardDescription();
 
-      loadTopGainers();
-      loadLeaderboard();
-      if (state.currentPlayer && state.currentPlayer.data) {
-        const scoreType = state.currentGame?.scoreType || "Wins";
-        renderPlayerChart(state.currentPlayer.data.rows, scoreType);
-      }
+      notify("days");
     };
 
     // Comparison chart controls (independent timeframe + total/gained mode).
@@ -138,11 +131,9 @@ async function init() {
 
     updateLeaderboardDescription();
 
+    // Same fan-out as a game change, so the initial load never drifts from it.
     await Promise.all([
-      loadTopGainers(),
-      loadComparisonChart(state.comparisonPlayers),
-      loadLeaderboard(),
-      loadGamePopulation(),
+      notify("game"),
       initialPlayerIgn ? loadPlayerProfile(initialPlayerIgn) : Promise.resolve(),
     ]);
     if (!initialPlayerIgn) {
@@ -164,6 +155,7 @@ async function init() {
       .forEach((b) => b.classList.remove("active"));
     btn.classList.add("active");
     state.displayMode = btn.dataset.mode;
+    notify("displayMode");
 
     if (state.currentPlayer && state.currentPlayer.data) {
       loadPlayerProfile(state.currentPlayer.ign);

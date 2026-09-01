@@ -20,10 +20,6 @@
         });
       })();
     </script>
-    <script type="module" id="load-modules-script">
-      // Eagerly load all modules - This is to avoid having to import custom elements everywhere - https://vitejs.dev/guide/features.html#glob-import
-      import.meta.glob('./src/**/*.js', { eager: true });
-    </script>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <link rel="stylesheet" href="src/style.css" />
@@ -92,15 +88,15 @@
 
             <div class="stats-grid">
               <div class="stat-card">
-                <div class="stat-label">7D <span class="gainTypeLabel">Gain</span></div>
+                <div class="stat-label">7D <span data-label="gainType">Gain</span></div>
                 <div id="displayGain7d" class="stat-value">0</div>
               </div>
               <div class="stat-card">
-                <div class="stat-label">30D <span class="gainTypeLabel">Gain</span></div>
+                <div class="stat-label">30D <span data-label="gainType">Gain</span></div>
                 <div id="displayGain30d" class="stat-value">0</div>
               </div>
               <div class="stat-card">
-                <div id="scoreLabel" class="stat-label"><span class="currentTypeLabel">Value</span></div>
+                <div id="scoreLabel" class="stat-label"><span data-label="currentType">Value</span></div>
                 <div id="displayCurrentScore" class="stat-value">---</div>
               </div>
             </div>
@@ -126,7 +122,7 @@
 
       <div class="card comparison-chart-card">
         <div class="card-title">
-          <span>Player <span class="leaderboardScoreType">Wins</span> Comparison</span>
+          <span>Player <span data-label="scoreType">Wins</span> Comparison</span>
           <div class="comparison-controls">
             <div class="toggle-group" id="comparisonModeToggle">
               <button class="toggle-btn active" data-mode="total">Total</button>
@@ -164,7 +160,7 @@
 
       <div class="card population-card">
         <div class="card-title">
-          <span><span class="gameDisplayName">Game</span> Players Online</span>
+          <span><span data-label="gameName">Game</span> Players Online</span>
           <div class="toggle-group" id="populationRangeToggle">
             <button class="toggle-btn active" data-hours="24">24H</button>
             <button class="toggle-btn" data-hours="168">7D</button>
@@ -173,7 +169,7 @@
         </div>
         <div class="card-description">
           <span class="desc-item">
-            Concurrent players in <span class="gameDisplayName">this game</span>, from the Cubepanion
+            Concurrent players in <span data-label="gameName">this game</span>, from the Cubepanion
             addon. Readings arrive irregularly, so the line holds each value until the next and
             breaks where reporting stopped. These numbers are best effort. CubeCraft does not publish
             player counts, so Cubepanion scrapes them off the server. We are looking into other
@@ -206,7 +202,7 @@
       <div class="card leaderboard-card">
         <div class="card-title" id="leaderboardTitle">Full Leaderboard</div>
         <div class="card-description">
-          <span class="desc-item">This chart shows the current top 200 players based on total <span class="leaderboardScoreType">Wins</span>.</span><br>
+          <span class="desc-item">This chart shows the current top 200 players based on total <span data-label="scoreType">Wins</span>.</span><br>
           <span class="desc-item">
           <span class="rank-up">▲</span> / <span class="rank-down">▼</span> indicates position changes,
           <span class="rank-new-tag">NEW</span> indicates first-time entries.

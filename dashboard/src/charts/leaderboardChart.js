@@ -1,11 +1,13 @@
 // Full leaderboard: horizontal bar chart with rank-change annotations.
 import { Chart } from "./register.js";
 import { el, getStyle } from "../dom.js";
-import { state } from "../state.js";
+import { state, subscribe } from "../state.js";
 import { apiFetch, endpoints } from "../api.js";
 import { loadPlayerProfile, scrollToPlayerProfile } from "../playerProfile.js";
 
 let leaderboardChart = null;
+
+subscribe(["game", "days"], loadLeaderboard);
 
 export async function loadLeaderboard() {
   el("leaderboardLoading").style.display = "flex";

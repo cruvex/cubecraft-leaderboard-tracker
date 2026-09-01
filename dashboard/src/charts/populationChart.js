@@ -5,7 +5,7 @@
 // stood. Interpolating would draw a change that was never observed.
 import { Chart } from "./register.js";
 import { el, getStyle } from "../dom.js";
-import { state } from "../state.js";
+import { state, subscribe } from "../state.js";
 import { apiFetch, endpoints } from "../api.js";
 
 // Per timeframe: bucket width, and the x-axis tick spacing that goes with it.
@@ -24,6 +24,8 @@ const STALE_AFTER_MS = 2 * 60 * 60 * 1000;
 const GAP_BUCKETS = 24;
 
 let populationChart = null;
+
+subscribe(["game", "populationHours"], loadGamePopulation);
 
 export function destroyPopulationChart() {
   if (populationChart) {

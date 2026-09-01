@@ -1,10 +1,9 @@
 // Player profile panel: search/select a player, fetch their scores, render
 // stats + the score-over-time chart.
 import { el, formatUuid } from "./dom.js";
-import { state } from "./state.js";
+import { state, subscribe } from "./state.js";
 import { apiFetch, endpoints } from "./api.js";
 import { updatePath } from "./router.js";
-import { updateScoreTypeLabels } from "./labels.js";
 import { renderPlayerChart, destroyPlayerChart } from "./charts/playerChart.js";
 import { addToComparison, isInComparison } from "./comparisonSelection.js";
 
@@ -31,6 +30,17 @@ document.addEventListener("comparison:rendered", () => {
   if (cp?.ign && el("playerProfile").style.display !== "none") {
     syncAddToComparisonBtn({ uuid: cp.id, ign: cp.ign });
   }
+});
+
+// A game change invalidates the profile's data (app.js clears it), so refetch.
+subscribe(["game"], () => {
+  if (state.currentPlayer) return loadPlayerProfile(state.currentPlayer.ign, true);
+});
+
+// A timeframe change only rescales the existing series; no refetch needed.
+subscribe(["days"], () => {
+  if (!state.currentPlayer?.data) return;
+  renderPlayerChart(state.currentPlayer.data.rows, state.currentGame?.scoreType || "Wins");
 });
 
 export function scrollToPlayerProfile() {
@@ -114,7 +124,6 @@ export function renderPlayerProfile(scoreData, scoreType) {
     }
 
     renderPlayerChart(scoreData.rows, scoreType);
-    updateScoreTypeLabels();
   } else {
     el("displayGain7d").innerText = "0";
     el("displayGain30d").innerText = "0";
