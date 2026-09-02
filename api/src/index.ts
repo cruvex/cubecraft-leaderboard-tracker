@@ -1,4 +1,4 @@
-import { getUuidByIgn, getUuidsByIgns, getTopGainers, getTopGainersHistory, getPlayersHistory, getPlayerScores, getLeaderboard, getGamePopulation, getServerPopulation, searchPlayers } from "./db";
+import { getUuidByIgn, getUuidsByIgns, getTopGainers, getTopGainersHistory, getPlayersHistory, getPlayerScores, getLeaderboard, getGamePopulation, getServerPopulation, getServerStatus, getActiveHours, searchPlayers } from "./db";
 import { fetchGames } from "./cubepanion";
 
 const PORT = process.env.PORT ? Number(process.env.PORT) : 4000;
@@ -95,7 +95,31 @@ async function handleServerPopulation(req: Request) {
     const hours = clamp(Number(url.searchParams.get("hours") || 24), 1, 8760);
     const bucket = clamp(Number(url.searchParams.get("bucket") || 300), 60, 86400);
 
-    const result = await getServerPopulation(hours, bucket);
+    const result = await getServerPopulation(hours, bucket, resolveTimeZone(url.searchParams.get("tz")));
+    return jsonResponse(result);
+}
+
+async function handleServerStatus() {
+    return jsonResponse(await getServerStatus());
+}
+
+// Bucketing happens in the viewer's zone, so an unknown one falls back instead of erroring the query.
+function resolveTimeZone(tz: string | null) {
+    if (!tz) return "UTC";
+    try {
+        new Intl.DateTimeFormat("en-US", { timeZone: tz });
+        return tz;
+    } catch {
+        return "UTC";
+    }
+}
+
+async function handleServerActiveHours(req: Request) {
+    const url = new URL(req.url);
+    const days = clamp(Number(url.searchParams.get("days") || 30), 1, 365);
+    const timeZone = resolveTimeZone(url.searchParams.get("tz"));
+
+    const result = await getActiveHours(days, timeZone);
     return jsonResponse(result);
 }
 
@@ -137,6 +161,8 @@ Bun.serve({
         "/api/games/:gameId/leaderboard": (req) => handleLeaderboard(req, req.params as { gameId: string }),
         "/api/games/:gameId/population": (req) => handleGamePopulation(req, req.params as { gameId: string }),
         "/api/server/population": handleServerPopulation,
+        "/api/server/status": handleServerStatus,
+        "/api/server/active-hours": handleServerActiveHours,
         "/api/search/players": handleSearchPlayers,
         "/api/healthz": () => new Response("OK", { status: 200 }),
     },

@@ -44,7 +44,13 @@ export const endpoints = {
     `/games/${gameId}/population${qs({ hours, bucket })}`,
 
   /** Total network population; a clocked 1-minute series, unlike the per-game one. */
-  serverPopulation: (hours, bucket) => `/server/population${qs({ hours, bucket })}`,
+  serverPopulation: (hours, bucket, tz) => `/server/population${qs({ hours, bucket, tz })}`,
+
+  /** Newest reading + version range; polled for the live status card. */
+  serverStatus: () => `/server/status`,
+
+  /** Average players per hour of day; `tz` is an IANA zone name. */
+  serverActiveHours: (days, tz) => `/server/active-hours${qs({ days, tz })}`,
 
   /** Autocomplete search; returns { uuid, ign } pairs. */
   searchPlayers: (q) => `/search/players${qs({ q })}`,

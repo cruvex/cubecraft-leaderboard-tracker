@@ -13,6 +13,8 @@ import {
   loadServerPopulation,
   updateServerPopulationChartTheme,
 } from "./charts/serverPopulationChart.js";
+import { loadActiveHours, updateActiveHoursChartTheme } from "./charts/activeHoursChart.js";
+import { startServerStatus, stopServerStatus } from "./serverStatus.js";
 import {
   loadComparisonChart,
   renderComparisonChart,
@@ -39,10 +41,10 @@ async function renderRoute(route) {
   else await showGameView(route);
 }
 
-function setNavLink(href, text) {
-  const navLink = el("navLink");
-  navLink.setAttribute("href", href);
-  navLink.textContent = text;
+function setActiveTab(view) {
+  el("viewTabs")
+    .querySelectorAll(".nav-tab")
+    .forEach((tab) => tab.classList.toggle("active", tab.dataset.view === view));
 }
 
 /** A canvas hidden during a window resize never got the callback, so it draws stale until nudged. */
@@ -55,7 +57,7 @@ function showServerView() {
   el("gameView").hidden = true;
   el("serverView").hidden = false;
   el("gameSelector").hidden = true;
-  setNavLink("/", "Dashboard");
+  setActiveTab("server");
 
   if (!serverViewReady) {
     serverViewReady = true;
@@ -77,13 +79,16 @@ function showServerView() {
 
   // Refetched on every visit: a minute-resolution series goes stale fast.
   loadServerPopulation();
+  loadActiveHours();
+  startServerStatus();
 }
 
 async function showGameView(route) {
+  stopServerStatus();
   el("serverView").hidden = true;
   el("gameView").hidden = false;
   el("gameSelector").hidden = false;
-  setNavLink("/server", "Network");
+  setActiveTab("game");
 
   if (!gameViewReady) {
     gameViewReady = true;
@@ -241,6 +246,7 @@ function init() {
         updateComparisonChartTheme();
         updatePopulationChartTheme();
         updateServerPopulationChartTheme();
+        updateActiveHoursChartTheme();
       }
     });
   }).observe(document.documentElement, { attributes: true });

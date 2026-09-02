@@ -286,7 +286,7 @@ export async function getGamePopulation(gameId: number, hours = 24, bucketSecond
 }
 
 /** Bucket-averaged: a clocked one-ping-a-minute series, so an empty bucket is a failed poll, not a hold. */
-export async function getServerPopulation(hours = 24, bucketSeconds = 300) {
+export async function getServerPopulation(hours = 24, bucketSeconds = 300, timeZone = "UTC") {
   const window = Bun.sql`NOW() - CAST(${hours + " hours"} AS INTERVAL)`;
 
   const buckets = await Bun.sql`
@@ -317,8 +317,26 @@ export async function getServerPopulation(hours = 24, bucketSeconds = 300) {
     LIMIT 1
   `;
 
+  // Same bucket width, but keyed on local time of day across 30 days, so the chart can
+  // draw what a given clock time usually looks like beside what it did this time.
+  const typicalRows = await Bun.sql`
+    SELECT
+      FLOOR(
+        EXTRACT(epoch FROM (timestamp AT TIME ZONE ${timeZone})::time) / ${bucketSeconds}
+      )::int AS slot,
+      AVG(online)::float8 AS average
+    FROM server_player_counts
+    WHERE timestamp >= NOW() - CAST('30 days' AS INTERVAL)
+    GROUP BY slot
+  `;
+
+  const slots = Math.ceil(86400 / bucketSeconds);
+  const bySlot = new Map((typicalRows || []).map((r: any) => [Number(r.slot), Number(r.average)]));
+
   return {
     bucketSeconds,
+    typicalDays: 30,
+    typical: Array.from({ length: slots }, (_, i) => bySlot.get(i) ?? null),
     rows: (buckets || []).map((r: any) => ({
       timestamp: r.bucket instanceof Date ? r.bucket.toISOString() : String(r.bucket),
       online: Number(r.online),
@@ -338,6 +356,79 @@ export async function getServerPopulation(hours = 24, bucketSeconds = 300) {
           capacity: Number(latest.max),
         }
       : null,
+  };
+}
+
+/** Newest reading plus the version range in force, for the live status card. */
+export async function getServerStatus() {
+  const [latest] = await Bun.sql`
+    SELECT timestamp, online, max
+    FROM server_player_counts
+    ORDER BY timestamp DESC
+    LIMIT 1
+  `;
+
+  const [version] = await Bun.sql`
+    SELECT observed_at, minimum, maximum, raw
+    FROM server_versions
+    ORDER BY observed_at DESC
+    LIMIT 1
+  `;
+
+  return {
+    latest: latest
+      ? {
+          timestamp:
+            latest.timestamp instanceof Date
+              ? latest.timestamp.toISOString()
+              : String(latest.timestamp),
+          online: Number(latest.online),
+          capacity: Number(latest.max),
+        }
+      : null,
+    version: version
+      ? {
+          minimum: String(version.minimum),
+          maximum: String(version.maximum),
+          raw: String(version.raw),
+          since:
+            version.observed_at instanceof Date
+              ? version.observed_at.toISOString()
+              : String(version.observed_at),
+        }
+      : null,
+  };
+}
+
+/** Average online per hour of day, bucketed in `timeZone` so DST and half-hour offsets hold. */
+export async function getActiveHours(days = 30, timeZone = "UTC") {
+  const rows = await Bun.sql`
+    SELECT
+      EXTRACT(hour FROM timestamp AT TIME ZONE ${timeZone})::int AS hour,
+      AVG(online)::float8 AS average,
+      MAX(online)::int    AS peak,
+      COUNT(*)::int       AS samples
+    FROM server_player_counts
+    WHERE timestamp >= NOW() - CAST(${days + " days"} AS INTERVAL)
+    GROUP BY hour
+    ORDER BY hour
+  `;
+
+  const byHour = new Map((rows || []).map((r: any) => [Number(r.hour), r]));
+
+  // All 24 are emitted so a thin hour reads as a gap rather than shifting its neighbours along.
+  return {
+    days,
+    timeZone,
+    hours: Array.from({ length: 24 }, (_, hour) => {
+      const r = byHour.get(hour);
+      return {
+        hour,
+        average: r ? Number(r.average) : null,
+        peak: r ? Number(r.peak) : null,
+        samples: r ? Number(r.samples) : 0,
+      };
+    }),
   };
 }
 

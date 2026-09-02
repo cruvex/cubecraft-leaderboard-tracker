@@ -13,8 +13,8 @@ const RANGES = {
 
 const DEFAULT_HOURS = 24;
 
-// Samples land every 60s, so anything past this is an outage, not jitter.
-const STALE_AFTER_MS = 10 * 60 * 1000;
+// The typical-day profile is bucketed server-side in this zone, so it lines up with the axis.
+const TIME_ZONE = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
 
 let serverChart = null;
 
@@ -35,7 +35,7 @@ export async function loadServerPopulation() {
   try {
     const hours = state.serverHours;
     const { bucketSeconds } = RANGES[hours] || RANGES[DEFAULT_HOURS];
-    const data = await apiFetch(endpoints.serverPopulation(hours, bucketSeconds));
+    const data = await apiFetch(endpoints.serverPopulation(hours, bucketSeconds, TIME_ZONE));
     render(data);
   } catch (err) {
     console.error("Failed to load server population", err);
@@ -76,6 +76,8 @@ function render(data) {
     prevX = x;
   }
 
+  const typicalData = buildTypicalSeries(data.typical, bucketSeconds, minTime, now);
+
   const primary = getStyle("--primary");
   const textMuted = getStyle("--text-muted");
   const border = getStyle("--border");
@@ -102,6 +104,22 @@ function render(data) {
           pointHoverRadius: isMobile ? 4 : 5,
           borderWidth: isMobile ? 1.5 : 2,
         },
+        ...(typicalData.length === 0
+          ? []
+          : [
+              {
+                label: `${data.typicalDays}-day average`,
+                data: typicalData,
+                borderColor: textMuted,
+                borderDash: [6, 4],
+                borderWidth: 1.5,
+                pointRadius: 0,
+                pointHoverRadius: 0,
+                fill: false,
+                // Monotone, not tension: plain cubic overshoots into false humps at the extremes.
+                cubicInterpolationMode: "monotone",
+              },
+            ]),
       ],
     },
     options: {
@@ -111,7 +129,18 @@ function render(data) {
       interaction: { mode: "nearest", axis: "x", intersect: false },
       layout: { padding: { left: isSmall ? 2 : 5, right: isSmall ? 2 : 5 } },
       plugins: {
-        legend: { display: false },
+        legend: {
+          display: typicalData.length > 0,
+          position: "top",
+          align: "end",
+          labels: {
+            filter: (item) => item.datasetIndex === 1,
+            usePointStyle: true,
+            boxWidth: 24,
+            color: textMuted,
+            font: { size: 11 },
+          },
+        },
         tooltip: {
           backgroundColor: cardBg,
           titleColor: text,
@@ -123,7 +152,10 @@ function render(data) {
           usePointStyle: true,
           callbacks: {
             title: (items) => new Date(items[0].parsed.x).toLocaleString(),
-            label: (context) => `${formatPlayers(context.parsed.y)} players`,
+            label: (context) =>
+              context.datasetIndex === 0
+                ? `${formatPlayers(context.parsed.y)} players`
+                : `Typical ${formatPlayers(context.parsed.y)}`,
           },
         },
       },
@@ -166,28 +198,47 @@ function render(data) {
   });
 }
 
-function setStats(data) {
-  const { latest, peak, average } = data || {};
-  const age = latest ? Date.now() - new Date(latest.timestamp).getTime() : null;
-  const stale = age === null || age > STALE_AFTER_MS;
+// Each point takes the profile value for its own local clock time, so the shape repeats daily.
+function buildTypicalSeries(typical, bucketSeconds, minTime, now) {
+  if (!typical || !typical.some((v) => v != null)) return [];
 
-  el("serverNowLabel").textContent = nowLabel(latest, age, stale);
-  el("serverNow").textContent = latest ? formatPlayers(latest.online) : "—";
-  el("serverPeak").textContent = peak == null ? "—" : formatPlayers(peak);
-  el("serverAverage").textContent = average == null ? "—" : formatPlayers(average);
+  // Roughly a quarter hour either side: enough to settle the 5-minute profile, a no-op hourly.
+  const profile = smoothProfile(typical, Math.round(900 / bucketSeconds));
 
-  const capacity = latest?.capacity;
-  el("serverCapacity").textContent =
-    capacity && latest ? `${Math.round((latest.online / capacity) * 100)}%` : "—";
-  el("serverCapacityLabel").textContent = capacity
-    ? `of ${formatPlayers(capacity)} slots`
-    : "Of capacity";
+  const step = bucketSeconds * 1000;
+  const points = [];
+  for (let x = Math.ceil(minTime / step) * step; x <= now; x += step) {
+    const d = new Date(x);
+    const seconds = d.getHours() * 3600 + d.getMinutes() * 60 + d.getSeconds();
+    const value = profile[Math.floor(seconds / bucketSeconds)];
+    points.push({ x, y: value == null ? null : value });
+  }
+  return points;
 }
 
-// A minute-resolution series is current or broken; no middle ground worth an age for.
-function nowLabel(latest, age, stale) {
-  if (!latest) return "Now";
-  return stale ? `Last seen ${formatAge(age)} ago` : "Now";
+// A day of slots is a loop, so the window wraps midnight instead of tapering at both ends.
+function smoothProfile(values, radius) {
+  if (radius < 1) return values;
+
+  return values.map((_, i) => {
+    let sum = 0;
+    let count = 0;
+    for (let d = -radius; d <= radius; d++) {
+      const v = values[(i + d + values.length) % values.length];
+      if (v != null) {
+        sum += v;
+        count++;
+      }
+    }
+    return count ? sum / count : null;
+  });
+}
+
+function setStats(data) {
+  const { peak, average } = data || {};
+
+  el("serverPeak").textContent = peak == null ? "—" : formatPlayers(peak);
+  el("serverAverage").textContent = average == null ? "—" : formatPlayers(average);
 }
 
 function showMessage(message) {
@@ -200,14 +251,6 @@ function showMessage(message) {
 function formatPlayers(value) {
   if (value == null) return "—";
   return Math.round(value).toLocaleString();
-}
-
-function formatAge(ms) {
-  const minutes = Math.round(ms / 60000);
-  if (minutes < 60) return `${minutes} min`;
-  const hours = Math.round(minutes / 60);
-  if (hours < 48) return `${hours}h`;
-  return `${Math.round(hours / 24)}d`;
 }
 
 export function updateServerPopulationChartTheme() {
@@ -227,6 +270,9 @@ export function updateServerPopulationChartTheme() {
   serverChart.options.plugins.tooltip.titleColor = text;
   serverChart.options.plugins.tooltip.bodyColor = text;
   serverChart.options.plugins.tooltip.borderColor = border;
+
+  serverChart.options.plugins.legend.labels.color = textMuted;
+  if (serverChart.data.datasets[1]) serverChart.data.datasets[1].borderColor = textMuted;
 
   serverChart.update("none");
 }

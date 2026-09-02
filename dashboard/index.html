@@ -27,9 +27,14 @@
   </head>
   <body>
     <nav class="navbar">
-      <h1>CubeCraft Leaderboard Tracker</h1>
+      <div class="nav-left">
+        <h1>CubeCraft Leaderboard Tracker</h1>
+        <nav class="nav-tabs" id="viewTabs">
+          <a class="nav-tab" data-view="game" href="/">Dashboard</a>
+          <a class="nav-tab" data-view="server" href="/server">Network</a>
+        </nav>
+      </div>
       <div class="nav-controls">
-        <a id="navLink" class="nav-link" href="/server">Network</a>
         <select id="gameSelector">
         </select>
         <a class="discord-link" href="https://discord.gg/h3zht7WUhG" target="_blank" rel="noopener noreferrer" title="Join the Discord" aria-label="Join the Discord server">
@@ -40,6 +45,43 @@
     </nav>
 
     <div class="container" id="serverView" hidden>
+      <div class="card server-status-card">
+        <div class="card-title"><span>Current Status</span></div>
+
+        <div class="status-list">
+          <div class="status-row">
+            <div class="stat-label">Players online</div>
+            <div class="stat-of">
+              <span id="statusPlayers" class="stat-value">&mdash;</span>
+              <span id="statusCapacity" class="stat-max"></span>
+            </div>
+          </div>
+          <div class="status-row">
+            <div class="stat-label">Supported versions</div>
+            <div id="statusVersion" class="stat-value">&mdash;</div>
+          </div>
+        </div>
+
+        <div id="statusUpdated" class="status-updated">&mdash;</div>
+      </div>
+
+      <div class="card active-hours-card">
+        <div class="card-title">
+          <span>Most Active Hours</span>
+        </div>
+        <div class="card-description">
+          <span class="desc-item" id="activeHoursDescription">
+            Average players online by hour of day.
+          </span>
+        </div>
+
+        <div class="chart-wrapper" style="height: 260px;">
+          <div id="activeHoursLoading" class="loading-overlay">Loading chart...</div>
+          <div id="activeHoursEmpty" class="loading-overlay"></div>
+          <canvas id="activeHoursChart"></canvas>
+        </div>
+      </div>
+
       <div class="card server-population-card">
         <div class="card-title">
           <span>Network Players Online</span>
@@ -59,20 +101,12 @@
 
         <div class="stats-grid">
           <div class="stat-card">
-            <div id="serverNowLabel" class="stat-label">Now</div>
-            <div id="serverNow" class="stat-value">—</div>
-          </div>
-          <div class="stat-card">
             <div class="stat-label">Peak</div>
             <div id="serverPeak" class="stat-value">—</div>
           </div>
           <div class="stat-card">
             <div class="stat-label">Average</div>
             <div id="serverAverage" class="stat-value">—</div>
-          </div>
-          <div class="stat-card">
-            <div id="serverCapacityLabel" class="stat-label">Of capacity</div>
-            <div id="serverCapacity" class="stat-value">—</div>
           </div>
         </div>
 
