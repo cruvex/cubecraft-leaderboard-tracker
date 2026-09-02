@@ -1,5 +1,4 @@
-// Shared mutable app state. A single object so other modules can read and
-// mutate fields (ES module `let` exports are read-only across modules).
+// Shared mutable app state; one object because ES module `let` exports are read-only across modules.
 export const state = {
   /** @type {any[]} */
   games: [],
@@ -12,13 +11,7 @@ export const state = {
   currentPlayer: undefined,
 
   // --- "Wins over time" comparison chart (independent of the global controls) ---
-  /**
-   * Players shown in the comparison chart. `null` means "use the default"
-   * (top gainers); a list means a custom selection. Each entry carries the
-   * UUID (what the API is queried by, so the server never has to resolve an
-   * ign→uuid) and the IGN (for the chips).
-   * @type {{ uuid: string, ign: string }[] | null}
-   */
+  /** `null` means the default (top gainers); uuid is what the API is queried by. @type {{ uuid: string, ign: string }[] | null} */
   comparisonPlayers: null,
   /** Timeframe (in days) for the comparison chart, independent of the global toggle. */
   comparisonDays: 30,
@@ -26,30 +19,22 @@ export const state = {
   comparisonMode: "total",
   /** Last-fetched comparison series, cached so the mode toggle can re-render without refetching. */
   comparisonData: [],
-  /**
-   * The ign→colour mapping of the lines actually drawn, published by the chart
-   * so the selection pills can match line colours.
-   * @type {{ ign: string, color: string }[]}
-   */
+  /** Published by the chart so the selection pills can match line colours. @type {{ ign: string, color: string }[]} */
   comparisonSeries: [],
-  /**
-   * Lowercased IGNs whose lines are toggled off (hidden but still selected).
-   * Transient view state — not persisted.
-   * @type {Set<string>}
-   */
+  /** Lowercased IGNs toggled off — hidden but still selected, not persisted. @type {Set<string>} */
   comparisonHidden: new Set(),
 
   /** Timeframe in hours for the population chart; values in charts/populationChart.js. */
   populationHours: 24,
 
+  /** Timeframe in hours for the /server population chart. */
+  serverHours: 24,
+
   // --- Search autocomplete ---
   autocompleteSelectedIndex: -1,
 };
 
-// --- Change notification ---
-// A module registers its own loader against the topics it depends on, so adding
-// a card touches only that module.
-
+// Modules register their own loader against the topics they depend on, so adding a card touches one module.
 /** @type {Map<string, Set<Function>>} */
 const subscribers = new Map();
 

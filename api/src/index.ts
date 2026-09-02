@@ -1,4 +1,4 @@
-import { getUuidByIgn, getUuidsByIgns, getTopGainers, getTopGainersHistory, getPlayersHistory, getPlayerScores, getLeaderboard, getGamePopulation, searchPlayers } from "./db";
+import { getUuidByIgn, getUuidsByIgns, getTopGainers, getTopGainersHistory, getPlayersHistory, getPlayerScores, getLeaderboard, getGamePopulation, getServerPopulation, searchPlayers } from "./db";
 import { fetchGames } from "./cubepanion";
 
 const PORT = process.env.PORT ? Number(process.env.PORT) : 4000;
@@ -11,9 +11,7 @@ function jsonResponse(obj: unknown, status = 200) {
     });
 }
 
-/**
- * Resolve an ID which could be a UUID or an IGN to a UUID.
- */
+/** Resolve an ID which could be a UUID or an IGN to a UUID. */
 async function resolvePlayerId(id: string): Promise<string | null> {
     const isUuid = id.length >= 32 && (id.includes("-") || id.length === 32);
     return isUuid ? id : await getUuidByIgn(id);
@@ -79,8 +77,7 @@ async function handlePlayerScores(req: Request, params: { gameId: string, id: st
     return jsonResponse(result);
 }
 
-// Clamped, unlike the other routes: this table grows by the minute, and two
-// years at 60-second resolution would scan the lot.
+// Clamped, unlike other routes: this table grows by the minute and would scan the lot.
 async function handleGamePopulation(req: Request, params: { gameId: string }) {
     const url = new URL(req.url);
     const gameId = Number(params.gameId);
@@ -90,6 +87,15 @@ async function handleGamePopulation(req: Request, params: { gameId: string }) {
     const bucket = clamp(Number(url.searchParams.get("bucket") || 300), 60, 86400);
 
     const result = await getGamePopulation(gameId, hours, bucket);
+    return jsonResponse(result);
+}
+
+async function handleServerPopulation(req: Request) {
+    const url = new URL(req.url);
+    const hours = clamp(Number(url.searchParams.get("hours") || 24), 1, 8760);
+    const bucket = clamp(Number(url.searchParams.get("bucket") || 300), 60, 86400);
+
+    const result = await getServerPopulation(hours, bucket);
     return jsonResponse(result);
 }
 
@@ -130,6 +136,7 @@ Bun.serve({
         "/api/games": handleGames,
         "/api/games/:gameId/leaderboard": (req) => handleLeaderboard(req, req.params as { gameId: string }),
         "/api/games/:gameId/population": (req) => handleGamePopulation(req, req.params as { gameId: string }),
+        "/api/server/population": handleServerPopulation,
         "/api/search/players": handleSearchPlayers,
         "/api/healthz": () => new Response("OK", { status: 200 }),
     },

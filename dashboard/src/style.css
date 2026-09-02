@@ -98,6 +98,18 @@ body {
   gap: 1rem;
 }
 
+.nav-link {
+  color: var(--text-muted);
+  text-decoration: none;
+  font-size: 0.875rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.nav-link:hover {
+  color: var(--primary);
+}
+
 .discord-link {
   display: flex;
   align-items: center;
@@ -273,6 +285,12 @@ body {
   display: grid;
   grid-template-columns: 320px 1fr;
   gap: 1rem 1rem;
+}
+
+/* `display: grid` above is an author rule and so beats the UA stylesheet's
+   [hidden] { display: none }. Without this the inactive view stays on screen. */
+.container[hidden] {
+  display: none;
 }
 
 aside {
@@ -648,6 +666,12 @@ tr.clickable:hover .tg-rank .add-to-comparison-btn {
   margin-bottom: 1.5rem;
 }
 
+/* The network card carries a fourth tile, so it widens the grid rather than
+   changing the three-column default every other card relies on. */
+.server-population-card .stats-grid {
+  grid-template-columns: repeat(4, 1fr);
+}
+
 .stat-card {
   padding: 1rem;
   background: var(--bg);
@@ -706,7 +730,8 @@ tr.clickable:hover .tg-rank .add-to-comparison-btn {
   }
   .chart-controls .toggle-group { width: 100%; }
   .chart-controls .toggle-btn { flex: 1; text-align: center; }
-  .stats-grid {
+  .stats-grid,
+  .server-population-card .stats-grid {
     grid-template-columns: 1fr;
     gap: 0.5rem;
     margin-bottom: 1rem;
@@ -832,7 +857,8 @@ tr.clickable:hover .tg-rank .add-to-comparison-btn {
    ================================================ */
 .leaderboard-card,
 .comparison-chart-card,
-.population-card {
+.population-card,
+.server-population-card {
   grid-column: 1 / -1;
 }
 

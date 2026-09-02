@@ -1,15 +1,8 @@
-// API client: a thin fetch wrapper plus explicit endpoint builders.
-//
-// Endpoints are built by dedicated functions rather than inferred from the URL
-// string, so there's no fragile substring sniffing to decide game-scoping or
-// the `days` param. Callers pass exactly what each route needs.
+// API client: a thin fetch wrapper plus explicit endpoint builders, so no URL substring sniffing.
 
 const API_BASE = "/api";
 
-/**
- * Fetch JSON from an API path (the result of an `endpoints.*` builder) or an
- * absolute URL. Throws on non-2xx.
- */
+/** Fetch JSON from an `endpoints.*` path or an absolute URL. Throws on non-2xx. */
 export async function apiFetch(path) {
   const url = /^https?:\/\//.test(path) ? path : `${API_BASE}${path}`;
   const res = await fetch(url);
@@ -40,10 +33,7 @@ export const endpoints = {
   playersHistory: (gameId, ids, days) =>
     `/games/${gameId}/players/history${qs({ ids: ids.join(","), days })}`,
 
-  /**
-   * A single player's score history. No `days` param: the backend defaults to
-   * its window and the client filters to the displayed range.
-   */
+  /** One player's history. No `days`: the backend defaults and the client filters to range. */
   playerScores: (gameId, idOrIgn) =>
     `/games/${gameId}/player/${encodeURIComponent(idOrIgn)}`,
 
@@ -52,6 +42,9 @@ export const endpoints = {
   /** Concurrent-player readings for one game; `bucket` is in seconds. */
   gamePopulation: (gameId, hours, bucket) =>
     `/games/${gameId}/population${qs({ hours, bucket })}`,
+
+  /** Total network population; a clocked 1-minute series, unlike the per-game one. */
+  serverPopulation: (hours, bucket) => `/server/population${qs({ hours, bucket })}`,
 
   /** Autocomplete search; returns { uuid, ign } pairs. */
   searchPlayers: (q) => `/search/players${qs({ q })}`,

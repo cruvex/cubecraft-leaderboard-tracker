@@ -34,13 +34,7 @@ export async function getTopGainers(days = 30, gameId: number) {
   }));
 }
 
-/**
- * Batch-fetch the score-over-time series for an explicit set of players.
- * This is the generic primitive behind the "wins over time" comparison chart;
- * callers decide which players to include (see getTopGainersHistory for the
- * default top-gainers seed). The returned array preserves the order of `uuids`,
- * and players with no data in the window are omitted.
- */
+/** Score series for an explicit player set, in `uuids` order; players with no data are omitted. */
 export async function getPlayersHistory(uuids: string[], days = 30, gameId: number) {
   if (!uuids.length) return [];
 
@@ -89,11 +83,7 @@ export async function getPlayersHistory(uuids: string[], days = 30, gameId: numb
     }));
 }
 
-/**
- * Resolve the top-N gainers in the window to a player list, then return their
- * histories via getPlayersHistory. This is the default seed for the comparison
- * chart; the chart itself is not bound to "gainers".
- */
+/** Default seed for the comparison chart: top-N gainers, then their histories via getPlayersHistory. */
 export async function getTopGainersHistory(days = 30, gameId: number, limit = 10) {
   const gainers = await Bun.sql`
     SELECT lr.player AS uuid
@@ -132,8 +122,7 @@ export async function getLeaderboard(gameId: string, compareDays: number = 30) {
     LIMIT 1
   `;
 
-  // Fetches current + past scores and IGN in one shot.
-  // Departed players (past-only) sort to the end via NULLS LAST on cur.score.
+  // Current + past scores and IGN in one shot; departed players sort last via NULLS LAST on cur.score.
   const allRows = await Bun.sql`
     SELECT
       COALESCE(cur.player, past.player) AS player,
@@ -239,13 +228,7 @@ export async function getPlayerScores(uuid: string, days = 30, gameId: number) {
   return { player: uuid, ign, rows: filteredRows, gain7d, gain30d };
 }
 
-/**
- * Concurrent-player readings for one game, downsampled into buckets.
- * Each bucket keeps its LAST reading; an average would invent counts like 132.5
- * that were never observed. Empty buckets are omitted: the previous reading
- * still stood. `latest` ignores the window so a dead game can still say when it
- * last reported.
- */
+/** Per-game readings bucketed to their LAST value — an average would invent counts never observed. */
 export async function getGamePopulation(gameId: number, hours = 24, bucketSeconds = 300) {
   const buckets = await Bun.sql`
     WITH readings AS (
@@ -302,10 +285,63 @@ export async function getGamePopulation(gameId: number, hours = 24, bucketSecond
   };
 }
 
-/**
- * Batch-resolve IGNs to UUIDs in one query (case-insensitive, latest IGN wins).
- * Returns a map keyed by lowercased IGN; IGNs with no match are absent.
- */
+/** Bucket-averaged: a clocked one-ping-a-minute series, so an empty bucket is a failed poll, not a hold. */
+export async function getServerPopulation(hours = 24, bucketSeconds = 300) {
+  const window = Bun.sql`NOW() - CAST(${hours + " hours"} AS INTERVAL)`;
+
+  const buckets = await Bun.sql`
+    SELECT
+      to_timestamp(
+        floor(extract(epoch FROM timestamp) / ${bucketSeconds}) * ${bucketSeconds}
+      ) AS bucket,
+      AVG(online)::float8 AS online,
+      MIN(online)::int    AS low,
+      MAX(online)::int    AS high
+    FROM server_player_counts
+    WHERE timestamp >= ${window}
+    GROUP BY bucket
+    ORDER BY bucket
+  `;
+
+  // Read off the raw rows, so the chosen bucket width never moves them.
+  const [aggregate] = await Bun.sql`
+    SELECT MAX(online)::int AS peak, AVG(online)::float8 AS average, COUNT(*)::int AS samples
+    FROM server_player_counts
+    WHERE timestamp >= ${window}
+  `;
+
+  const [latest] = await Bun.sql`
+    SELECT timestamp, online, max
+    FROM server_player_counts
+    ORDER BY timestamp DESC
+    LIMIT 1
+  `;
+
+  return {
+    bucketSeconds,
+    rows: (buckets || []).map((r: any) => ({
+      timestamp: r.bucket instanceof Date ? r.bucket.toISOString() : String(r.bucket),
+      online: Number(r.online),
+      low: Number(r.low),
+      high: Number(r.high),
+    })),
+    peak: aggregate?.peak == null ? null : Number(aggregate.peak),
+    average: aggregate?.average == null ? null : Number(aggregate.average),
+    samples: aggregate ? Number(aggregate.samples) : 0,
+    latest: latest
+      ? {
+          timestamp:
+            latest.timestamp instanceof Date
+              ? latest.timestamp.toISOString()
+              : String(latest.timestamp),
+          online: Number(latest.online),
+          capacity: Number(latest.max),
+        }
+      : null,
+  };
+}
+
+/** Batch IGN->UUID (case-insensitive, latest wins); map keyed by lowercased IGN, misses absent. */
 export async function getUuidsByIgns(igns: string[]): Promise<Map<string, string>> {
   if (!igns.length) return new Map();
   const res = await Bun.sql`
