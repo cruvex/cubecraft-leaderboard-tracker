@@ -132,7 +132,7 @@ function formatHour(hour) {
 
 function formatPlayers(value) {
   if (value == null) return "—";
-  return Math.round(value).toLocaleString();
+  return value.toLocaleString();
 }
 
 export function updateActiveHoursChartTheme() {

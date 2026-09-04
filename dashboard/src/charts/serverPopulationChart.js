@@ -41,7 +41,7 @@ export async function loadServerPopulation() {
     console.error("Failed to load server population", err);
     destroyServerPopulationChart();
     setStats(null);
-    showMessage("Couldn't load network player counts.");
+    showMessage("Couldn't load player counts.");
   } finally {
     loading.style.display = "none";
   }
@@ -202,36 +202,15 @@ function render(data) {
 function buildTypicalSeries(typical, bucketSeconds, minTime, now) {
   if (!typical || !typical.some((v) => v != null)) return [];
 
-  // Roughly a quarter hour either side: enough to settle the 5-minute profile, a no-op hourly.
-  const profile = smoothProfile(typical, Math.round(900 / bucketSeconds));
-
   const step = bucketSeconds * 1000;
   const points = [];
   for (let x = Math.ceil(minTime / step) * step; x <= now; x += step) {
     const d = new Date(x);
     const seconds = d.getHours() * 3600 + d.getMinutes() * 60 + d.getSeconds();
-    const value = profile[Math.floor(seconds / bucketSeconds)];
+    const value = typical[Math.floor(seconds / bucketSeconds)];
     points.push({ x, y: value == null ? null : value });
   }
   return points;
-}
-
-// A day of slots is a loop, so the window wraps midnight instead of tapering at both ends.
-function smoothProfile(values, radius) {
-  if (radius < 1) return values;
-
-  return values.map((_, i) => {
-    let sum = 0;
-    let count = 0;
-    for (let d = -radius; d <= radius; d++) {
-      const v = values[(i + d + values.length) % values.length];
-      if (v != null) {
-        sum += v;
-        count++;
-      }
-    }
-    return count ? sum / count : null;
-  });
 }
 
 function setStats(data) {
@@ -247,10 +226,9 @@ function showMessage(message) {
   empty.style.display = message ? "flex" : "none";
 }
 
-// Bucket averages are fractional, but a tenth of a player is not worth showing.
 function formatPlayers(value) {
   if (value == null) return "—";
-  return Math.round(value).toLocaleString();
+  return value.toLocaleString();
 }
 
 export function updateServerPopulationChartTheme() {

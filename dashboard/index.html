@@ -28,10 +28,10 @@
   <body>
     <nav class="navbar">
       <div class="nav-left">
-        <h1>CubeCraft Leaderboard Tracker</h1>
+        <h1>CubeCraft Tracker</h1>
         <nav class="nav-tabs" id="viewTabs">
-          <a class="nav-tab" data-view="game" href="/">Dashboard</a>
-          <a class="nav-tab" data-view="server" href="/server">Network</a>
+          <a class="nav-tab" data-view="game" href="/">Games</a>
+          <a class="nav-tab" data-view="server" href="/server">Server</a>
         </nav>
       </div>
       <div class="nav-controls">
@@ -67,7 +67,7 @@
 
       <div class="card active-hours-card">
         <div class="card-title">
-          <span>Most Active Hours</span>
+          <span>Players by Hour</span>
         </div>
         <div class="card-description">
           <span class="desc-item" id="activeHoursDescription">
@@ -84,18 +84,14 @@
 
       <div class="card server-population-card">
         <div class="card-title">
-          <span>Network Players Online</span>
+          <span>Players Online</span>
           <div class="toggle-group" id="serverRangeToggle">
             <button class="toggle-btn active" data-hours="24">24H</button>
             <button class="toggle-btn" data-hours="168">7D</button>
             <button class="toggle-btn" data-hours="720">30D</button>
           </div>
         </div>
-        <div class="card-description">
-          <span class="desc-item">
-            Everyone on the CubeCraft Java network.
-          </span>
-        </div>
+
 
         <div class="stats-grid">
           <div class="stat-card">
@@ -275,7 +271,7 @@
       </div>
 
       <div class="card leaderboard-card">
-        <div class="card-title" id="leaderboardTitle">Full Leaderboard</div>
+        <div class="card-title" id="leaderboardTitle">Leaderboard</div>
         <div class="card-description">
           <span class="desc-item">This chart shows the current top <span id="leaderboardRowCount">200</span> players based on total <span data-label="scoreType">Wins</span>.</span><br>
           <span class="desc-item">

@@ -11,6 +11,7 @@ import {
   PointElement,
   Tooltip,
   Legend,
+  Filler
 } from "chart.js";
 
 Chart.register(
@@ -22,7 +23,8 @@ Chart.register(
   CategoryScale,
   PointElement,
   Tooltip,
-  Legend
+  Legend,
+  Filler
 );
 
 export { Chart };

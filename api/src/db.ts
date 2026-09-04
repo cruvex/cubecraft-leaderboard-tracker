@@ -1,3 +1,8 @@
+function iso(value: unknown) {
+  if (value == null) return null;
+  return value instanceof Date ? value.toISOString() : String(value);
+}
+
 export async function getTopGainers(days = 30, gameId: number) {
   const res = await Bun.sql`
     WITH scores AS (
@@ -67,7 +72,7 @@ export async function getPlayersHistory(uuids: string[], days = 30, gameId: numb
       seriesByUuid.set(r.uuid, series);
     }
     series.push({
-      timestamp: r.timestamp instanceof Date ? r.timestamp.toISOString() : String(r.timestamp),
+      timestamp: iso(r.timestamp),
       score: r.score == null ? 0 : Number(r.score),
     });
     if (r.ign) ignByUuid.set(r.uuid, r.ign);
@@ -102,9 +107,6 @@ export async function getTopGainersHistory(days = 30, gameId: number, limit = 10
 }
 
 export async function getLeaderboard(gameId: string, compareDays: number = 30) {
-  const formatTimestamp = (ts: unknown): string | null =>
-      ts instanceof Date ? ts.toISOString() : ts ? String(ts) : null;
-
   const [latestSnapshot] = await Bun.sql`
     SELECT id, timestamp FROM leaderboard_snapshots
     WHERE game_id = ${gameId}
@@ -176,8 +178,8 @@ export async function getLeaderboard(gameId: string, compareDays: number = 30) {
   return {
     rows,
     departed,
-    timestamp: formatTimestamp(latestSnapshot.timestamp),
-    compareTimestamp: formatTimestamp(pastSnapshot?.timestamp),
+    timestamp: iso(latestSnapshot.timestamp),
+    compareTimestamp: iso(pastSnapshot?.timestamp),
   };
 }
 
@@ -206,7 +208,7 @@ export async function getPlayerScores(uuid: string, days = 30, gameId: number) {
   if (!scores || scores.length === 0) return null;
 
   const rows = scores.map((r: any) => ({
-    timestamp: r.timestamp instanceof Date ? r.timestamp.toISOString() : String(r.timestamp),
+    timestamp: iso(r.timestamp),
     score: r.score == null ? 0 : Number(r.score),
     position: r.position == null ? 0 : Number(r.position),
   }));
@@ -260,7 +262,7 @@ export async function getGamePopulation(gameId: number, hours = 24, bucketSecond
   `;
 
   const rows = (buckets || []).map((r: any) => ({
-    timestamp: r.bucket instanceof Date ? r.bucket.toISOString() : String(r.bucket),
+    timestamp: iso(r.bucket),
     players: Number(r.players),
   }));
 
@@ -275,10 +277,7 @@ export async function getGamePopulation(gameId: number, hours = 24, bucketSecond
     average: aggregate ? Number(aggregate.window_average) : null,
     latest: latest
       ? {
-          timestamp:
-            latest.timestamp instanceof Date
-              ? latest.timestamp.toISOString()
-              : String(latest.timestamp),
+          timestamp: iso(latest.timestamp),
           players: Number(latest.players),
         }
       : null,
@@ -294,9 +293,7 @@ export async function getServerPopulation(hours = 24, bucketSeconds = 300, timeZ
       to_timestamp(
         floor(extract(epoch FROM timestamp) / ${bucketSeconds}) * ${bucketSeconds}
       ) AS bucket,
-      AVG(online)::float8 AS online,
-      MIN(online)::int    AS low,
-      MAX(online)::int    AS high
+      ROUND(AVG(online))::int AS online
     FROM server_player_counts
     WHERE timestamp >= ${window}
     GROUP BY bucket
@@ -305,16 +302,9 @@ export async function getServerPopulation(hours = 24, bucketSeconds = 300, timeZ
 
   // Read off the raw rows, so the chosen bucket width never moves them.
   const [aggregate] = await Bun.sql`
-    SELECT MAX(online)::int AS peak, AVG(online)::float8 AS average, COUNT(*)::int AS samples
+    SELECT MAX(online)::int AS peak, ROUND(AVG(online))::int AS average
     FROM server_player_counts
     WHERE timestamp >= ${window}
-  `;
-
-  const [latest] = await Bun.sql`
-    SELECT timestamp, online, max
-    FROM server_player_counts
-    ORDER BY timestamp DESC
-    LIMIT 1
   `;
 
   // Same bucket width, but keyed on local time of day across 30 days, so the chart can
@@ -333,30 +323,41 @@ export async function getServerPopulation(hours = 24, bucketSeconds = 300, timeZ
   const slots = Math.ceil(86400 / bucketSeconds);
   const bySlot = new Map((typicalRows || []).map((r: any) => [Number(r.slot), Number(r.average)]));
 
+  // Roughly a quarter hour either side: enough to settle the 5-minute profile, a no-op hourly.
+  const typical = smoothProfile(
+    Array.from({ length: slots }, (_, i) => bySlot.get(i) ?? null),
+    Math.round(900 / bucketSeconds)
+  );
+
   return {
     bucketSeconds,
     typicalDays: 30,
-    typical: Array.from({ length: slots }, (_, i) => bySlot.get(i) ?? null),
+    typical,
     rows: (buckets || []).map((r: any) => ({
-      timestamp: r.bucket instanceof Date ? r.bucket.toISOString() : String(r.bucket),
+      timestamp: iso(r.bucket),
       online: Number(r.online),
-      low: Number(r.low),
-      high: Number(r.high),
     })),
     peak: aggregate?.peak == null ? null : Number(aggregate.peak),
     average: aggregate?.average == null ? null : Number(aggregate.average),
-    samples: aggregate ? Number(aggregate.samples) : 0,
-    latest: latest
-      ? {
-          timestamp:
-            latest.timestamp instanceof Date
-              ? latest.timestamp.toISOString()
-              : String(latest.timestamp),
-          online: Number(latest.online),
-          capacity: Number(latest.max),
-        }
-      : null,
   };
+}
+
+// A day of slots is a loop, so the window wraps midnight instead of tapering at both ends.
+function smoothProfile(values: (number | null)[], radius: number) {
+  if (radius < 1) return values.map((v) => (v == null ? null : Math.round(v)));
+
+  return values.map((_, i) => {
+    let sum = 0;
+    let count = 0;
+    for (let d = -radius; d <= radius; d++) {
+      const v = values[(i + d + values.length) % values.length];
+      if (v != null) {
+        sum += v;
+        count++;
+      }
+    }
+    return count ? Math.round(sum / count) : null;
+  });
 }
 
 /** Newest reading plus the version range in force, for the live status card. */
@@ -378,10 +379,7 @@ export async function getServerStatus() {
   return {
     latest: latest
       ? {
-          timestamp:
-            latest.timestamp instanceof Date
-              ? latest.timestamp.toISOString()
-              : String(latest.timestamp),
+          timestamp: iso(latest.timestamp),
           online: Number(latest.online),
           capacity: Number(latest.max),
         }
@@ -391,10 +389,7 @@ export async function getServerStatus() {
           minimum: String(version.minimum),
           maximum: String(version.maximum),
           raw: String(version.raw),
-          since:
-            version.observed_at instanceof Date
-              ? version.observed_at.toISOString()
-              : String(version.observed_at),
+          since: iso(version.observed_at),
         }
       : null,
   };
@@ -405,9 +400,9 @@ export async function getActiveHours(days = 30, timeZone = "UTC") {
   const rows = await Bun.sql`
     SELECT
       EXTRACT(hour FROM timestamp AT TIME ZONE ${timeZone})::int AS hour,
-      AVG(online)::float8 AS average,
-      MAX(online)::int    AS peak,
-      COUNT(*)::int       AS samples
+      ROUND(AVG(online))::int AS average,
+      MAX(online)::int        AS peak,
+      COUNT(*)::int           AS samples
     FROM server_player_counts
     WHERE timestamp >= NOW() - CAST(${days + " days"} AS INTERVAL)
     GROUP BY hour
