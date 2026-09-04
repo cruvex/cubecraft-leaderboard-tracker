@@ -4,6 +4,7 @@ import { el, getStyle } from "../dom.js";
 import { state, subscribe } from "../state.js";
 import { apiFetch, endpoints } from "../api.js";
 import { loadPlayerProfile, scrollToPlayerProfile } from "../playerProfile.js";
+import { setLeaderboardRowCount } from "../labels.js";
 
 let leaderboardChart = null;
 
@@ -87,6 +88,7 @@ function renderLeaderboardChart(data) {
   }
 
   const rows = data.rows || [];
+  setLeaderboardRowCount(rows.length);
 
   const values = rows.map((d) => d.score);
   const max = Math.max(...values);

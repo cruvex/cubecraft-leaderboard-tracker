@@ -27,6 +27,12 @@ export function renderLabels(root = document) {
 // State changes re-render every label.
 subscribe(["game", "displayMode"], () => renderLabels());
 
+/** Set the player count in the leaderboard card's copy from the rows actually returned. */
+export function setLeaderboardRowCount(count) {
+  const countEl = el("leaderboardRowCount");
+  if (countEl) countEl.textContent = count.toLocaleString();
+}
+
 /** Update the leaderboard card's descriptive copy for the current timeframe. */
 export function updateLeaderboardDescription() {
   const rangeEl = el("leaderboardTimeRange");

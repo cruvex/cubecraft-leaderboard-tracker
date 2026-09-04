@@ -93,9 +93,7 @@
         </div>
         <div class="card-description">
           <span class="desc-item">
-            Everyone on the CubeCraft Java network, counted by a server status ping once a
-            minute. This is the whole network &mdash; lobbies, Bedwars, everything &mdash; not the
-            sum of the per-game numbers, which come from a different source and will not agree.
+            Everyone on the CubeCraft Java network.
           </span>
         </div>
 
@@ -249,11 +247,8 @@
         </div>
         <div class="card-description">
           <span class="desc-item">
-            Concurrent players in <span data-label="gameName">this game</span>, from the Cubepanion
-            addon. Readings arrive irregularly, so the line holds each value until the next and
-            breaks where reporting stopped. These numbers are best effort. CubeCraft does not publish
-            player counts, so Cubepanion scrapes them off the server. We are looking into other
-            ways of retrieving it.
+            Concurrent players in <span data-label="gameName">this game</span>. Sourced from Cubepanion,
+            which scrapes irregularly, so expect occasional gaps and stale numbers.
           </span>
         </div>
 
@@ -282,7 +277,7 @@
       <div class="card leaderboard-card">
         <div class="card-title" id="leaderboardTitle">Full Leaderboard</div>
         <div class="card-description">
-          <span class="desc-item">This chart shows the current top 200 players based on total <span data-label="scoreType">Wins</span>.</span><br>
+          <span class="desc-item">This chart shows the current top <span id="leaderboardRowCount">200</span> players based on total <span data-label="scoreType">Wins</span>.</span><br>
           <span class="desc-item">
           <span class="rank-up">▲</span> / <span class="rank-down">▼</span> indicates position changes,
           <span class="rank-new-tag">NEW</span> indicates first-time entries.
