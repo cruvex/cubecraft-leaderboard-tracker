@@ -3,7 +3,7 @@ import { state, enabledGames, notify } from "./state.js";
 import { Chart } from "./charts/register.js";
 import { el } from "./dom.js";
 import { apiFetch, endpoints } from "./api.js";
-import { startRouter, updatePath } from "./router.js";
+import { startRouter, updatePath, setTitle } from "./router.js";
 import { updateLeaderboardDescription } from "./labels.js";
 import { loadPlayerProfile } from "./playerProfile.js";
 import { updatePlayerChartTheme } from "./charts/playerChart.js";
@@ -76,6 +76,7 @@ function showServerView() {
   }
 
   resizeCharts(el("serverView"));
+  setTitle("server");
 
   // Refetched on every visit: a minute-resolution series goes stale fast.
   loadServerPopulation();
@@ -211,6 +212,8 @@ async function bootstrapGameView({ gameName: initialGameName, playerIgn: initial
     if (!initialPlayerIgn) {
       updatePath();
     }
+    // A player that failed to load never reached updatePath, so the game still names the tab.
+    setTitle("game");
   } catch (err) {
     console.error("Initialization failed", err);
   }

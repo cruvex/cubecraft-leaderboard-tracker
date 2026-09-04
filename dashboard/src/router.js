@@ -1,6 +1,6 @@
 // URL <-> app-state syncing. Path shapes:
 //   /games/:gameName/player/:ign   the game dashboard
-//   /server                        network-wide stats
+//   /server                        server-wide stats
 import { state } from "./state.js";
 
 // Most specific first; a `:name` segment matches one path segment.
@@ -106,4 +106,19 @@ export function updatePath() {
   }
   // Not navigation.navigate(): this runs inside the handler it would abort.
   window.history.replaceState({}, "", newPath);
+  setTitle("game");
+}
+
+const SITE_NAME = "CubeCraft Tracker";
+
+/** Name the tab after what the address bar now points at; a bookmark should read back the same. */
+export function setTitle(view) {
+  if (view === "server") {
+    document.title = `Server - ${SITE_NAME}`;
+    return;
+  }
+
+  const { currentGame, currentPlayer } = state;
+  const scope = [currentPlayer?.ign, currentGame?.displayName].filter(Boolean);
+  document.title = scope.length ? `${scope.join(" - ")} - ${SITE_NAME}` : SITE_NAME;
 }
