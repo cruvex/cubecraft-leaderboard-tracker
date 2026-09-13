@@ -6,6 +6,9 @@ import { apiFetch, endpoints } from "./api.js";
 import { updatePath } from "./router.js";
 import { renderPlayerChart, destroyPlayerChart } from "./charts/playerChart.js";
 import { addToComparison, isInComparison } from "./comparisonSelection.js";
+import { selectedPeriod, periodLabel, monthStart, formatMonth } from "./period.js";
+
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 /**
  * Reflect whether the displayed player is already on the comparison chart.
@@ -37,10 +40,8 @@ subscribe(["game"], () => {
   if (state.currentPlayer) return loadPlayerProfile(state.currentPlayer.ign, true);
 });
 
-// A timeframe change only rescales the existing series; no refetch needed.
-subscribe(["days"], () => {
-  if (!state.currentPlayer?.data) return;
-  renderPlayerChart(state.currentPlayer.data.rows, state.currentGame?.scoreType || "Wins");
+subscribe(["topGainersPeriod"], () => {
+  if (state.currentPlayer) return loadPlayerProfile(state.currentPlayer.ign);
 });
 
 export function scrollToPlayerProfile() {
@@ -56,15 +57,26 @@ export async function loadPlayerProfile(idOrIgn, forceFetch = false) {
 
   const scoreType = state.currentGame?.scoreType || "Wins";
   const cp = state.currentPlayer;
+  const period = state.topGainersPeriod;
 
-  if (!forceFetch && cp && (cp.id === idOrIgn || cp.ign === idOrIgn) && cp.data) {
+  const isCached =
+    cp &&
+    (cp.id === idOrIgn || cp.ign === idOrIgn) &&
+    cp.data &&
+    cp.period === period;
+
+  if (!forceFetch && isCached) {
     renderPlayerProfile(cp.data, scoreType);
     return;
   }
 
+  const gameId = state.currentGame.id;
+
   try {
-    const scoreData = await apiFetch(endpoints.playerScores(state.currentGame.id, idOrIgn));
-    state.currentPlayer = { id: scoreData.player, ign: scoreData.ign, data: scoreData };
+    const scoreData = await apiFetch(endpoints.playerScores(gameId, idOrIgn, selectedPeriod()));
+    // Ignore the response if the game or period changed while it loaded.
+    if (gameId !== state.currentGame?.id || period !== state.topGainersPeriod) return;
+    state.currentPlayer = { id: scoreData.player, ign: scoreData.ign, period, data: scoreData };
 
     updatePath();
     renderPlayerProfile(scoreData, scoreType);
@@ -98,36 +110,57 @@ export function renderPlayerProfile(scoreData, scoreType) {
     else if (value < 0) elem.classList.add("text-negative");
   };
 
-  if (scoreData.rows?.length) {
-    if (state.displayMode === "wins") {
-      setGainEl("displayGain7d", scoreData.gain7d, true);
-      setGainEl("displayGain30d", scoreData.gain30d, true);
-      const currentScore = scoreData.rows[scoreData.rows.length - 1].score;
-      el("displayCurrentScore").innerText = currentScore.toLocaleString();
-    } else {
-      // Position gains
-      const now = Date.now();
-      const dayMs = 24 * 60 * 60 * 1000;
-      const rows = scoreData.rows;
-      const currentPos = rows[rows.length - 1].position;
+  const { month, rows, current } = scoreData;
 
-      const getGain = (days) => {
-        const targetTime = now - days * dayMs;
-        const oldRow = rows.find((r) => new Date(r.timestamp).getTime() >= targetTime);
-        if (!oldRow) return 0;
-        return oldRow.position - currentPos; // old 10, current 5 -> +5
-      };
+  el("displayGainPeriod").innerText = periodLabel();
+  setGainEl("displayGain", periodGain(scoreData), true);
 
-      setGainEl("displayGain7d", getGain(7), true);
-      setGainEl("displayGain30d", getGain(30), true);
-      el("displayCurrentScore").innerText = "#" + currentPos.toLocaleString();
-    }
-
-    renderPlayerChart(scoreData.rows, scoreType);
-  } else {
-    el("displayGain7d").innerText = "0";
-    el("displayGain30d").innerText = "0";
+  if (!current) {
     el("displayCurrentScore").innerText = "No data";
+  } else if (state.displayMode === "wins") {
+    el("displayCurrentScore").innerText = current.score.toLocaleString();
+  } else {
+    el("displayCurrentScore").innerText = "#" + current.position.toLocaleString();
+  }
+
+  const emptyEl = el("chartEmpty");
+  if (rows.length) {
+    emptyEl.style.display = "none";
+    renderPlayerChart(rows, scoreType, chartRange(rows));
+  } else {
+    emptyEl.textContent = month ? `No data for ${formatMonth(month)}` : "No data";
+    emptyEl.style.display = "flex";
     destroyPlayerChart();
   }
+}
+
+/** Wins gained, or positions climbed (#10 to #5 is +5), over the loaded period. */
+function periodGain(scoreData) {
+  if (state.displayMode === "wins") return scoreData.gain;
+
+  const { rows } = scoreData;
+  if (rows.length < 2) return 0;
+  return rows[0].position - rows[rows.length - 1].position;
+}
+
+/** The chart's x-axis span, in epoch ms, for the selected period. */
+function chartRange(rows) {
+  const now = Date.now();
+  const { days, month } = selectedPeriod();
+
+  if (days) {
+    return { min: now - days * DAY_MS, max: now };
+  }
+
+  const start = monthStart(month);
+  const end = new Date(start);
+  end.setUTCMonth(end.getUTCMonth() + 1);
+  const firstReading = new Date(rows[0].timestamp);
+
+  return {
+    // Starts at the carry reading when it is before the 1st.
+    min: Math.min(start.getTime(), firstReading.getTime()),
+    // The current month ends now.
+    max: Math.min(end.getTime(), now),
+  };
 }

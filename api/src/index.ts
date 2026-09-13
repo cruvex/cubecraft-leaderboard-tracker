@@ -1,7 +1,9 @@
-import { getUuidByIgn, getUuidsByIgns, getTopGainers, getTopGainersHistory, getPlayersHistory, getPlayerScores, getLeaderboard, getGamePopulation, getServerPopulation, getServerStatus, getActiveHours, searchPlayers } from "./db";
+import { getUuidByIgn, getUuidsByIgns, getTopGainers, getTopGainersForMonth, getTopGainerMonths, getTopGainersHistory, getPlayersHistory, getPlayerScores, getPlayerMonthScores, getLeaderboard, getGamePopulation, getServerPopulation, getServerStatus, getActiveHours, searchPlayers } from "./db";
 import { fetchGames } from "./cubepanion";
 
 const PORT = process.env.PORT ? Number(process.env.PORT) : 4000;
+
+const MONTH_PATTERN = /^\d{4}-(0[1-9]|1[0-2])$/;
 
 // Utility helpers
 function jsonResponse(obj: unknown, status = 200) {
@@ -22,9 +24,11 @@ async function resolvePlayerId(id: string): Promise<string | null> {
 async function handleTopGainers(req: Request, params: { gameId: string }) {
     const url = new URL(req.url);
     const days = Number(url.searchParams.get("days") || 30);
+    const month = url.searchParams.get("month");
     const gameId = Number(params.gameId);
     if (isNaN(gameId)) return jsonResponse({ error: "Invalid gameId" }, 400);
-    const result = await getTopGainers(days, gameId);
+    if (month && !MONTH_PATTERN.test(month)) return jsonResponse({ error: "Invalid month" }, 400);
+    const result = month ? await getTopGainersForMonth(month, gameId) : await getTopGainers(days, gameId);
     return jsonResponse(result);
 }
 
@@ -35,6 +39,13 @@ async function handleTopGainersHistory(req: Request, params: { gameId: string })
     const gameId = Number(params.gameId);
     if (isNaN(gameId)) return jsonResponse({ error: "Invalid gameId" }, 400);
     const result = await getTopGainersHistory(days, gameId, limit);
+    return jsonResponse(result);
+}
+
+async function handleTopGainerMonths(req: Request, params: { gameId: string }) {
+    const gameId = Number(params.gameId);
+    if (isNaN(gameId)) return jsonResponse({ error: "Invalid gameId" }, 400);
+    const result = await getTopGainerMonths(gameId);
     return jsonResponse(result);
 }
 
@@ -68,9 +79,11 @@ async function handlePlayerScores(req: Request, params: { gameId: string, id: st
     }
     const url = new URL(req.url);
     const days = Number(url.searchParams.get("days") || 30);
+    const month = url.searchParams.get("month");
     const gameId = Number(params.gameId);
     if (isNaN(gameId)) return jsonResponse({ error: "Invalid gameId" }, 400);
-    const result = await getPlayerScores(id, days, gameId);
+    if (month && !MONTH_PATTERN.test(month)) return jsonResponse({ error: "Invalid month" }, 400);
+    const result = month ? await getPlayerMonthScores(id, month, gameId) : await getPlayerScores(id, days, gameId);
     if (!result) {
         return jsonResponse({ error: "Player scores not found" }, 404);
     }
@@ -155,6 +168,7 @@ Bun.serve({
     routes: {
         "/api/games/:gameId/top-gainers": (req) => handleTopGainers(req, req.params as { gameId: string }),
         "/api/games/:gameId/top-gainers/history": (req) => handleTopGainersHistory(req, req.params as { gameId: string }),
+        "/api/games/:gameId/top-gainers/months": (req) => handleTopGainerMonths(req, req.params as { gameId: string }),
         "/api/games/:gameId/players/history": (req) => handlePlayersHistory(req, req.params as { gameId: string }),
         "/api/games/:gameId/player/:id": (req) => handlePlayerScores(req, req.params as { gameId: string, id: string }),
         "/api/games": handleGames,

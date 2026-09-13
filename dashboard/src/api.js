@@ -22,8 +22,11 @@ function qs(params) {
 export const endpoints = {
   games: () => `/games`,
 
-  /** Sidebar top-gainers list. */
-  topGainers: (gameId, days) => `/games/${gameId}/top-gainers${qs({ days })}`,
+  /** Sidebar top-gainers list for the last `days` or a `month` ("YYYY-MM"). */
+  topGainers: (gameId, { days, month }) => `/games/${gameId}/top-gainers${qs({ days, month })}`,
+
+  /** Months for the sidebar's period dropdown. */
+  topGainerMonths: (gameId) => `/games/${gameId}/top-gainers/months`,
 
   /** Default seed for the comparison chart: top-N gainers with their histories. */
   topGainersHistory: (gameId, days, limit) =>
@@ -33,9 +36,9 @@ export const endpoints = {
   playersHistory: (gameId, ids, days) =>
     `/games/${gameId}/players/history${qs({ ids: ids.join(","), days })}`,
 
-  /** One player's history. No `days`: the backend defaults and the client filters to range. */
-  playerScores: (gameId, idOrIgn) =>
-    `/games/${gameId}/player/${encodeURIComponent(idOrIgn)}`,
+  /** One player's history for the last `days` or a `month` ("YYYY-MM"). */
+  playerScores: (gameId, idOrIgn, { days, month }) =>
+    `/games/${gameId}/player/${encodeURIComponent(idOrIgn)}${qs({ days, month })}`,
 
   leaderboard: (gameId, days) => `/games/${gameId}/leaderboard${qs({ days })}`,
 

@@ -42,7 +42,7 @@ export function updateLeaderboardDescription() {
 
   if (!rangeEl) return;
 
-  const timeText = state.currentDays === 7 ? "last 7 days" : "last month";
+  const timeText = state.leaderboardDays === 7 ? "last 7 days" : "last month";
   rangeEl.textContent = `All changes are relative to the ${timeText}.`;
 
   if (summaryTextEl) {

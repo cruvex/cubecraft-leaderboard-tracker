@@ -2,8 +2,7 @@
 //
 // Defaults to the top-10 gainers (state.comparisonPlayers === null) but is not
 // bound to that concept — passing an explicit player list renders any selection.
-// Timeframe and total/gained mode are independent of the global dashboard
-// controls (see state.comparison*).
+// Timeframe and total/gained mode have their own controls (see state.comparison*).
 import { Chart } from "./register.js";
 import { el, getStyle } from "../dom.js";
 import { state, subscribe } from "../state.js";

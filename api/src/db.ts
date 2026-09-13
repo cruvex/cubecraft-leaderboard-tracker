@@ -106,6 +106,179 @@ export async function getTopGainersHistory(days = 30, gameId: number, limit = 10
   return getPlayersHistory(uuids, days, gameId);
 }
 
+// How far before a month's start the carry snapshot may be; month coverage uses the same tolerance.
+const CARRY_WINDOW = "3 days";
+
+// CTEs `bounds` (the month's start and stop) and `carry` (the game's last snapshot within CARRY_WINDOW before the start).
+function monthCtes(month: string, gameId: number) {
+  const start = `${month}-01`;
+  return Bun.sql`
+    bounds AS (
+      SELECT
+        CAST(${start} AS timestamp)                      AS start,
+        CAST(${start} AS timestamp) + INTERVAL '1 month' AS stop
+    ),
+    carry AS (
+      SELECT ls.id
+      FROM leaderboard_snapshots ls
+      CROSS JOIN bounds b
+      WHERE ls.game_id = ${gameId}
+        AND ls.timestamp < b.start
+        AND ls.timestamp >= b.start - CAST(${CARRY_WINDOW} AS INTERVAL)
+      ORDER BY ls.timestamp DESC
+      LIMIT 1
+    )
+  `;
+}
+
+/** A player's readings in a month ("YYYY-MM"), starting with their reading in the carry snapshot, plus their latest reading. */
+export async function getPlayerMonthScores(uuid: string, month: string, gameId: number) {
+  const ign = await getIgnByUuid(uuid);
+  if (!ign) return null;
+
+  const scores = await Bun.sql`
+    WITH ${monthCtes(month, gameId)}
+    SELECT ls.timestamp, lr.score, lr.position, ls.id = (SELECT id FROM carry) AS is_carry
+    FROM leaderboard_rows lr
+    JOIN leaderboard_snapshots ls ON ls.id = lr.snapshot_id
+    CROSS JOIN bounds b
+    WHERE lr.player = ${uuid}
+      AND ls.game_id = ${gameId}
+      AND (
+        (ls.timestamp >= b.start AND ls.timestamp < b.stop)
+        OR ls.id = (SELECT id FROM carry)
+      )
+    ORDER BY ls.timestamp
+  `;
+
+  const [latest] = await Bun.sql`
+    SELECT lr.score, lr.position
+    FROM leaderboard_rows lr
+    JOIN leaderboard_snapshots ls ON ls.id = lr.snapshot_id
+    WHERE lr.player = ${uuid}
+      AND ls.game_id = ${gameId}
+    ORDER BY ls.timestamp DESC
+    LIMIT 1
+  `;
+
+  // A carry reading without any readings in the month counts as no data.
+  const hasMonthReadings = (scores as any[]).some((r) => !r.is_carry);
+
+  const rows = hasMonthReadings
+    ? (scores as any[]).map((r) => ({
+        timestamp: iso(r.timestamp),
+        score: Number(r.score),
+        position: Number(r.position),
+      }))
+    : [];
+
+  const gain = rows.length > 1 ? rows[rows.length - 1].score - rows[0].score : 0;
+
+  return {
+    player: uuid,
+    ign,
+    month,
+    rows,
+    gain,
+    current: latest ? { score: Number(latest.score), position: Number(latest.position) } : null,
+  };
+}
+
+/** Gainers over a month ("YYYY-MM"), measured from the carry snapshot for players who are in it. */
+export async function getTopGainersForMonth(month: string, gameId: number) {
+  const res = await Bun.sql`
+    WITH ${monthCtes(month, gameId)},
+    readings AS (
+      SELECT
+        lr.player,
+        (array_agg(lr.score ORDER BY ls.timestamp))[1]      AS first_score,
+        (array_agg(lr.score ORDER BY ls.timestamp DESC))[1] AS last_score
+      FROM leaderboard_rows lr
+      JOIN leaderboard_snapshots ls ON ls.id = lr.snapshot_id
+      CROSS JOIN bounds b
+      WHERE ls.game_id = ${gameId}
+        AND ls.timestamp >= b.start
+        AND ls.timestamp < b.stop
+      GROUP BY lr.player
+    ),
+    -- Players missing from the carry snapshot count from their first reading in the month.
+    gains AS (
+      SELECT r.player, r.last_score - COALESCE(c.score, r.first_score) AS score_gain
+      FROM readings r
+      LEFT JOIN leaderboard_rows c ON c.snapshot_id = (SELECT id FROM carry) AND c.player = r.player
+    ),
+    player_igns AS (
+      SELECT DISTINCT ON (player_uuid) player_uuid, player_ign
+      FROM ign_history
+      ORDER BY player_uuid, id DESC
+    )
+    SELECT g.player AS uuid, pi.player_ign AS ign, g.score_gain
+    FROM gains g
+    LEFT JOIN player_igns pi ON pi.player_uuid = g.player
+    WHERE g.score_gain > 0
+    ORDER BY g.score_gain DESC
+  `;
+
+  return (res || []).map((r: any) => ({
+    player: r.uuid,
+    ign: r.ign || "Unknown",
+    score_gain: Number(r.score_gain),
+  }));
+}
+
+/** Every month from the game's first snapshot to now, newest first, with how much of each month was tracked. */
+export async function getTopGainerMonths(gameId: number) {
+  const res = await Bun.sql`
+    WITH snaps AS (
+      SELECT
+        timestamp,
+        date_trunc('month', timestamp)            AS month,
+        LAG(timestamp) OVER (ORDER BY timestamp) AS prev_ts
+      FROM leaderboard_snapshots
+      WHERE game_id = ${gameId}
+    ),
+    tracked AS (
+      SELECT DISTINCT ON (month)
+        month,
+        timestamp AS first_ts,
+        MAX(timestamp) OVER (PARTITION BY month) AS last_ts,
+        COALESCE(prev_ts >= month - CAST(${CARRY_WINDOW} AS INTERVAL), false) AS has_carry
+      FROM snaps
+      ORDER BY month, timestamp
+    ),
+    calendar AS (
+      SELECT generate_series(
+        (SELECT MIN(month) FROM tracked),
+        date_trunc('month', NOW() AT TIME ZONE 'UTC'),
+        INTERVAL '1 month'
+      ) AS month
+    )
+    SELECT
+      to_char(c.month, 'YYYY-MM') AS month,
+      c.month = date_trunc('month', NOW() AT TIME ZONE 'UTC') AS in_progress,
+      t.month IS NOT NULL AS tracked,
+      (t.has_carry OR t.first_ts < c.month + CAST(${CARRY_WINDOW} AS INTERVAL)) AS covers_start,
+      t.last_ts >= c.month + INTERVAL '1 month' - CAST(${CARRY_WINDOW} AS INTERVAL) AS covers_end,
+      CASE WHEN t.has_carry THEN 1 ELSE EXTRACT(day FROM t.first_ts) END::int AS first_day,
+      EXTRACT(day FROM t.last_ts)::int AS last_day
+    FROM calendar c
+    LEFT JOIN tracked t ON t.month = c.month
+    ORDER BY c.month DESC
+  `;
+
+  return (res || []).map((r: any) => {
+    const coversMonth = r.covers_start && (r.in_progress || r.covers_end);
+
+    return {
+      month: r.month,
+      inProgress: r.in_progress,
+      partial: r.tracked && !coversMonth,
+      firstDay: r.first_day,
+      lastDay: r.last_day,
+    };
+  });
+}
+
 export async function getLeaderboard(gameId: string, compareDays: number = 30) {
   const [latestSnapshot] = await Bun.sql`
     SELECT id, timestamp FROM leaderboard_snapshots
@@ -184,16 +357,20 @@ export async function getLeaderboard(gameId: string, compareDays: number = 30) {
 }
 
 
-export async function getPlayerScores(uuid: string, days = 30, gameId: number) {
-  const ignRes = await Bun.sql`
+async function getIgnByUuid(uuid: string): Promise<string | null> {
+  const [row] = await Bun.sql`
     SELECT player_ign
     FROM ign_history
     WHERE player_uuid = ${uuid}
     ORDER BY id DESC
     LIMIT 1
   `;
-  if (!ignRes || ignRes.length === 0) return null;
-  const ign = ignRes[0].player_ign;
+  return row ? row.player_ign : null;
+}
+
+export async function getPlayerScores(uuid: string, days = 30, gameId: number) {
+  const ign = await getIgnByUuid(uuid);
+  if (!ign) return null;
 
   const scores = await Bun.sql`
     SELECT ls.timestamp, lr.score, lr.position
@@ -213,21 +390,21 @@ export async function getPlayerScores(uuid: string, days = 30, gameId: number) {
     position: r.position == null ? 0 : Number(r.position),
   }));
 
-  // Calculate 7d and 30d gains
+  // Rows within the requested days, used for the chart and the gain
   const now = Date.now();
-  const msIn7Days = 7 * 24 * 60 * 60 * 1000;
-  const msIn30Days = 30 * 24 * 60 * 60 * 1000;
-
-  const rows7d = rows.filter(r => (now - new Date(r.timestamp).getTime()) <= msIn7Days);
-  const rows30d = rows.filter(r => (now - new Date(r.timestamp).getTime()) <= msIn30Days);
-
-  const gain7d = rows7d.length > 1 ? Math.max(...rows7d.map(r => r.score)) - Math.min(...rows7d.map(r => r.score)) : 0;
-  const gain30d = rows30d.length > 1 ? Math.max(...rows30d.map(r => r.score)) - Math.min(...rows30d.map(r => r.score)) : 0;
-
-  // Filter rows for chart based on requested days
   const filteredRows = days === 0 ? rows : rows.filter(r => (now - new Date(r.timestamp).getTime()) <= (days * 24 * 60 * 60 * 1000));
 
-  return { player: uuid, ign, rows: filteredRows, gain7d, gain30d };
+  const scoresInRange = filteredRows.map(r => r.score);
+  const gain = scoresInRange.length > 1 ? Math.max(...scoresInRange) - Math.min(...scoresInRange) : 0;
+  const latest = rows[rows.length - 1];
+
+  return {
+    player: uuid,
+    ign,
+    rows: filteredRows,
+    gain,
+    current: { score: latest.score, position: latest.position },
+  };
 }
 
 /** Per-game readings bucketed to their LAST value — an average would invent counts never observed. */

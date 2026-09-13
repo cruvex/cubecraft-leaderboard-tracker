@@ -155,7 +155,8 @@ body {
 }
 
 #gameSelector,
-#comparisonTimeframe {
+#comparisonTimeframe,
+#topGainersPeriod {
   color-scheme: light;
   padding: 0.4rem 2rem 0.4rem 0.75rem;
   border-radius: 8px;
@@ -173,7 +174,8 @@ body {
 }
 
 #gameSelector:hover,
-#comparisonTimeframe:hover {
+#comparisonTimeframe:hover,
+#topGainersPeriod:hover {
   border-color: var(--text-muted);
 }
 
@@ -440,34 +442,6 @@ main {
 
 
 /* ================================================
-   Tables
-   ================================================ */
-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.875rem;
-}
-
-th {
-  text-align: left;
-  padding: 0.75rem;
-  border-bottom: 2px solid var(--border);
-  color: var(--text-muted);
-  font-weight: 600;
-  text-transform: uppercase;
-  font-size: 0.75rem;
-}
-
-td {
-  padding: 0.75rem;
-  border-bottom: 1px solid var(--border);
-}
-
-tr.clickable { cursor: pointer; }
-tr.clickable:hover { background: var(--bg); }
-
-
-/* ================================================
    Forms & Inputs
    ================================================ */
 .input-group {
@@ -581,11 +555,11 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
   line-height: 1;
 }
 
-tr.clickable:hover .tg-rank .rank-number {
+.tg-row:hover .tg-rank .rank-number {
   opacity: 0;
 }
 
-tr.clickable:hover .tg-rank .add-to-comparison-btn {
+.tg-row:hover .tg-rank .add-to-comparison-btn {
   display: flex;
 }
 
@@ -701,8 +675,9 @@ tr.clickable:hover .tg-rank .add-to-comparison-btn {
   margin-bottom: 1.5rem;
 }
 
-/* Peak and Average only; declared here so the 600px collapse still overrides it. */
-.server-population-card .stats-grid {
+/* Two-card rows; declared here so the 600px collapse still overrides them. */
+.server-population-card .stats-grid,
+.player-stats {
   grid-template-columns: repeat(2, 1fr);
 }
 
@@ -798,62 +773,70 @@ tr.clickable:hover .tg-rank .add-to-comparison-btn {
 
 .top-gainers-wrapper {
   flex: 1;
-  overflow-y: auto;
-  overflow-x: hidden;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* The same gutter on both keeps the header columns aligned with the scrolling rows. */
+.tg-header,
+.tg-list {
   padding-right: 0.5rem;
+  scrollbar-gutter: stable;
 }
 
-[theme="dark"] .top-gainers-wrapper {
-  scrollbar-color: var(--border) transparent;
-}
-
-.top-gainers-wrapper table {
-  width: 100%;
-  border-collapse: separate;
-  border-spacing: 0;
-  table-layout: fixed;
-}
-
-.top-gainers-wrapper th:nth-child(1),
-.top-gainers-wrapper td:nth-child(1) {
-  width: 2rem;
-}
-
-.top-gainers-wrapper th:nth-child(3),
-.top-gainers-wrapper td:nth-child(3) {
-  width: 5rem;
-}
-
-.top-gainers-wrapper th {
-  position: sticky;
-  top: 0;
-  background: var(--card-bg);
-  z-index: 2;
-  padding: 0.75rem 1rem;
+.tg-header {
+  overflow: hidden;
+  border-bottom: 1px solid var(--border);
   font-size: 0.7rem;
   font-weight: 700;
   text-transform: uppercase;
-  color: var(--text-muted);
-  border-bottom: 1px solid var(--border);
   letter-spacing: 0.05em;
+  color: var(--text-muted);
 }
 
-.top-gainers-wrapper td {
+.tg-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  margin: 0;
+  padding-left: 0;
+  list-style: none;
+}
+
+[theme="dark"] .tg-list {
+  scrollbar-color: var(--border) transparent;
+}
+
+.tg-header,
+.tg-row {
+  display: grid;
+  grid-template-columns: 2rem 1fr 5rem;
+  align-items: center;
+}
+
+.tg-header > *,
+.tg-row > * {
   padding: 0.75rem 1rem;
-  border-bottom: 1px solid var(--border);
-  font-size: 0.875rem;
+  text-align: center;
 }
 
-.top-gainers-wrapper td:last-child,
-.top-gainers-wrapper th:last-child {
+.tg-header > :last-child,
+.tg-row > :last-child {
   padding-right: 0;
 }
 
-.top-gainers-wrapper tr:last-child td {
+.tg-row {
+  border-bottom: 1px solid var(--border);
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+.tg-row:last-child {
   border-bottom: none;
 }
 
-.top-gainers-wrapper tr.clickable:hover {
+.tg-row:hover {
   background: var(--bg);
 }
 
@@ -883,6 +866,12 @@ tr.clickable:hover .tg-rank .add-to-comparison-btn {
     min-height: 200px;
     max-height: 320px;
   }
+}
+
+.top-gainers-note {
+  margin: -0.5rem 0 0.5rem;
+  font-size: 0.75rem;
+  color: var(--text-muted);
 }
 
 
@@ -1058,7 +1047,6 @@ tr.clickable:hover .tg-rank .add-to-comparison-btn {
 
 .centered-p { text-align: center; }
 .error-text { color: #b91c1c; }
-.text-center { text-align: center; }
 
 code {
   background: var(--bg);

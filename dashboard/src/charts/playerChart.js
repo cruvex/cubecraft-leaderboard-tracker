@@ -12,13 +12,12 @@ export function destroyPlayerChart() {
   }
 }
 
-export function renderPlayerChart(rows, scoreType = "Score") {
+/** `range` is the x-axis `{ min, max }` in epoch ms. */
+export function renderPlayerChart(rows, scoreType, range) {
   const ctx = el("scoreChart").getContext("2d");
 
-  const { displayMode, currentDays } = state;
-  const now = Date.now();
-  const maxTime = now;
-  const minTime = now - currentDays * 24 * 60 * 60 * 1000;
+  const { displayMode } = state;
+  const { min: minTime, max: maxTime } = range;
 
   const chartData = rows
     .map((r) => ({

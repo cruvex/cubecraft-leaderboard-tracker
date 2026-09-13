@@ -123,13 +123,11 @@
         <div class="card sticky-sidebar" id="topGainersCard">
           <div class="card-title">
             <span>Top Gainers</span>
-            <div class="toggle-group" id="daysToggle">
-              <button class="toggle-btn" data-days="7">7D</button>
-              <button class="toggle-btn active" data-days="30">30D</button>
-            </div>
+            <select id="topGainersPeriod" aria-label="Top gainers period"></select>
           </div>
-          <div id="topGainersContainer" class="top-gainers-wrapper">
-            <div id="topGainers" class="text-muted centered-p">Loading...</div>
+          <div id="topGainersNote" class="top-gainers-note" hidden></div>
+          <div id="topGainers" class="top-gainers-wrapper">
+            <div class="text-muted centered-p">Loading...</div>
           </div>
         </div>
       </aside>
@@ -160,14 +158,10 @@
               </div>
             </div>
 
-            <div class="stats-grid">
+            <div class="stats-grid player-stats">
               <div class="stat-card">
-                <div class="stat-label">7D <span data-label="gainType">Gain</span></div>
-                <div id="displayGain7d" class="stat-value">0</div>
-              </div>
-              <div class="stat-card">
-                <div class="stat-label">30D <span data-label="gainType">Gain</span></div>
-                <div id="displayGain30d" class="stat-value">0</div>
+                <div class="stat-label"><span id="displayGainPeriod">30D</span> <span data-label="gainType">Gain</span></div>
+                <div id="displayGain" class="stat-value">0</div>
               </div>
               <div class="stat-card">
                 <div id="scoreLabel" class="stat-label"><span data-label="currentType">Value</span></div>
@@ -177,6 +171,7 @@
 
             <div id="chartWrapper" class="chart-wrapper">
               <div id="chartLoading" class="loading-overlay">Loading chart...</div>
+              <div id="chartEmpty" class="loading-overlay"></div>
               <div id="chartContainer">
                 <canvas id="scoreChart"></canvas>
               </div>
@@ -271,7 +266,13 @@
       </div>
 
       <div class="card leaderboard-card">
-        <div class="card-title" id="leaderboardTitle">Leaderboard</div>
+        <div class="card-title">
+          <div id="leaderboardTitle">Leaderboard</div>
+          <div class="toggle-group" id="leaderboardDaysToggle">
+            <button class="toggle-btn" data-days="7">7D</button>
+            <button class="toggle-btn active" data-days="30">30D</button>
+          </div>
+        </div>
         <div class="card-description">
           <span class="desc-item">This chart shows the current top <span id="leaderboardRowCount">200</span> players based on total <span data-label="scoreType">Wins</span>.</span><br>
           <span class="desc-item">

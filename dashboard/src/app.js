@@ -109,11 +109,6 @@ async function bootstrapGameView({ gameName: initialGameName, playerIgn: initial
   loadComparisonState();
 
   try {
-    const activeBtn = el("daysToggle").querySelector(".toggle-btn.active");
-    if (activeBtn) {
-      state.currentDays = Number(activeBtn.dataset.days);
-    }
-
     const fetchedGames = await apiFetch(endpoints.games());
     state.games = fetchedGames.filter((g) => g.active);
 
@@ -148,7 +143,7 @@ async function bootstrapGameView({ gameName: initialGameName, playerIgn: initial
       notify("game");
     };
 
-    // Its own timeframe: minute-apart readings want a 24h view the global 7D/30D toggle cannot express.
+    // Its own timeframe: 24H, 7D or 30D.
     el("populationRangeToggle").onclick = (e) => {
       const btn = e.target.closest(".toggle-btn");
       if (!btn || btn.classList.contains("active")) return;
@@ -162,19 +157,18 @@ async function bootstrapGameView({ gameName: initialGameName, playerIgn: initial
       notify("populationHours");
     };
 
-    el("daysToggle").onclick = (e) => {
+    el("leaderboardDaysToggle").onclick = (e) => {
       const btn = e.target.closest(".toggle-btn");
-      if (!btn) return;
-      if (state.currentDays === Number(btn.dataset.days)) return;
+      if (!btn || btn.classList.contains("active")) return;
 
-      state.currentDays = Number(btn.dataset.days);
-
-      el("daysToggle").querySelectorAll(".toggle-btn").forEach((b) => b.classList.remove("active"));
+      el("leaderboardDaysToggle")
+        .querySelectorAll(".toggle-btn")
+        .forEach((b) => b.classList.remove("active"));
       btn.classList.add("active");
+      state.leaderboardDays = Number(btn.dataset.days);
 
       updateLeaderboardDescription();
-
-      notify("days");
+      notify("leaderboardDays");
     };
 
     // Comparison controls (independent timeframe + total/gained), synced to the restored state first.

@@ -1,19 +1,24 @@
 // Shared mutable app state; one object because ES module `let` exports are read-only across modules.
+import { currentMonth } from "./dom.js";
+
 export const state = {
   /** @type {any[]} */
   games: [],
   /** @type {any} */
   currentGame: undefined,
-  currentDays: 30,
+  /** "7" or "30" days, or a "YYYY-MM" month; used by Top Gainers and the player profile. */
+  topGainersPeriod: currentMonth(),
+  /** Days the leaderboard's rank changes compare against. */
+  leaderboardDays: 30,
   /** "wins" | "position" */
   displayMode: "wins",
-  /** @type {{ id: string, ign: string, data: any } | undefined} */
+  /** `period` is the Top Gainers period `data` was loaded for. @type {{ id: string, ign: string, period?: string, data: any } | undefined} */
   currentPlayer: undefined,
 
-  // --- "Wins over time" comparison chart (independent of the global controls) ---
+  // --- "Wins over time" comparison chart ---
   /** `null` means the default (top gainers); uuid is what the API is queried by. @type {{ uuid: string, ign: string }[] | null} */
   comparisonPlayers: null,
-  /** Timeframe (in days) for the comparison chart, independent of the global toggle. */
+  /** Timeframe (in days) for the comparison chart. */
   comparisonDays: 30,
   /** "total" = absolute score; "gained" = rebased to 0 at each player's earliest in-window point. */
   comparisonMode: "total",

@@ -8,6 +8,11 @@ export function getStyle(name) {
   return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 }
 
+/** The current UTC month as "YYYY-MM". */
+export function currentMonth() {
+  return new Date().toISOString().slice(0, 7);
+}
+
 /** Format a 32-char UUID into the dashed form; pass anything else through. */
 export function formatUuid(uuid) {
   if (!uuid) return "";

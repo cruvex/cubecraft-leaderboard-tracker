@@ -8,13 +8,13 @@ import { setLeaderboardRowCount } from "../labels.js";
 
 let leaderboardChart = null;
 
-subscribe(["game", "days"], loadLeaderboard);
+subscribe(["game", "leaderboardDays"], loadLeaderboard);
 
 export async function loadLeaderboard() {
   el("leaderboardLoading").style.display = "flex";
   try {
     const leaderboard = await apiFetch(
-      endpoints.leaderboard(state.currentGame.id, state.currentDays)
+      endpoints.leaderboard(state.currentGame.id, state.leaderboardDays)
     );
     renderLeaderboardChart(leaderboard);
   } catch (err) {
@@ -194,6 +194,7 @@ function renderLeaderboardChart(data) {
     options: {
       indexAxis: "y",
       responsive: true,
+      animation: false,
       maintainAspectRatio: false,
       plugins: {
         legend: { display: false },
