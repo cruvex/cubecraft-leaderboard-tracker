@@ -1,5 +1,5 @@
 // Entry point: bootstraps the dashboard and wires the top-level controls; feature logic lives in the imports.
-import { state, enabledGames, notify } from "./state.js";
+import { state, notify } from "./state.js";
 import { Chart } from "./charts/register.js";
 import { el } from "./dom.js";
 import { apiFetch, endpoints } from "./api.js";
@@ -126,7 +126,6 @@ async function bootstrapGameView({ gameName: initialGameName, playerIgn: initial
 
     const selector = el("gameSelector");
     state.games.forEach((game) => {
-      if (!enabledGames.includes(game.name)) return;
       const opt = document.createElement("option");
       opt.value = game.id;
       opt.textContent = game.displayName;

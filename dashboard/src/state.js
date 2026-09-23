@@ -54,5 +54,3 @@ export function subscribe(topics, fn) {
 export function notify(topic) {
   return Promise.all([...(subscribers.get(topic) ?? [])].map((fn) => fn()));
 }
-
-export const enabledGames = ["team_eggwars", "solo_skywars", "free_for_all", "mob_who"];
