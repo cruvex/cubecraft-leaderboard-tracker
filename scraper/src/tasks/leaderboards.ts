@@ -5,7 +5,6 @@ import type { Task, TaskContext } from "../scheduler";
 const cubepanionBaseUrl = "https://cubepanion.ameliah.art/api/v2";
 const userAgent = "CubeCraftPlus-scraper";
 const mojangBaseUrl = "https://api.mojang.com";
-const trackedGames = ["team_eggwars", "solo_skywars", "free_for_all", "mob_who"];
 
 const requestTimeoutMs = 10_000;
 
@@ -40,23 +39,19 @@ async function scrapeLeaderboards({ signal }: TaskContext): Promise<RunReport> {
 
   console.log(`Leaderboards hold ${config.playerCount} players`);
 
-  const games = await fetchGames(signal);
+  const games = (await fetchGames(signal)).filter((game) => game.active);
+
+  // Reported as a run, an empty list passes every check in needsAttention.
+  if (games.length === 0) throw new Error("No active games returned");
+
   const reports: GameReport[] = [];
 
-  for (const gameName of trackedGames) {
-    const game = games.find((g) => g.name === gameName);
-
-    if (!game) {
-      console.error(`Game not found: ${gameName}`);
-      reports.push({ game: gameName, status: "missing" });
-      continue;
-    }
-
+  for (const game of games) {
     reports.push(await processGame(game, config.playerCount, signal));
   }
 
   const seconds = (Bun.nanoseconds() - start) / 1_000_000_000;
-  console.log(`Checked ${trackedGames.length} games in ${seconds.toFixed(1)}s`);
+  console.log(`Checked ${games.length} games in ${seconds.toFixed(1)}s`);
 
   return { kind: "run", games: reports };
 }
