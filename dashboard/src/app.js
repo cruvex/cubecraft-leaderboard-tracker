@@ -26,6 +26,7 @@ import { loadComparisonState, saveComparisonState } from "./comparisonStore.js";
 
 // Side-effect imports: they export nothing and look removable, but dropping them drops the modules.
 import "./topGainers.js";
+import "./gameNotices.js";
 import "./elements/theme-toggle.js";
 
 // Each view is set up on first show and then left alone; switching back restores rather than rebuilds.
