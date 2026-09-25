@@ -279,6 +279,16 @@ export async function getTopGainerMonths(gameId: number) {
   });
 }
 
+/** Latest snapshot time per game; games without snapshots are absent. */
+export async function getLastSnapshotTimes(): Promise<Map<number, string | null>> {
+  const res = await Bun.sql`
+    SELECT game_id, MAX(timestamp) AS last_snapshot
+    FROM leaderboard_snapshots
+    GROUP BY game_id
+  `;
+  return new Map((res || []).map((r: any) => [r.game_id, iso(r.last_snapshot)]));
+}
+
 export async function getLeaderboard(gameId: string, compareDays: number = 30) {
   const [latestSnapshot] = await Bun.sql`
     SELECT id, timestamp FROM leaderboard_snapshots

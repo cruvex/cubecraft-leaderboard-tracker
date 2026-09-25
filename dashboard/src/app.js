@@ -110,8 +110,7 @@ async function bootstrapGameView({ gameName: initialGameName, playerIgn: initial
   loadComparisonState();
 
   try {
-    const fetchedGames = await apiFetch(endpoints.games());
-    state.games = fetchedGames.filter((g) => g.active);
+    state.games = await apiFetch(endpoints.games());
 
     // Default to Team Eggwars if no game found in path
     if (!initialGameName) {
@@ -126,13 +125,16 @@ async function bootstrapGameView({ gameName: initialGameName, playerIgn: initial
     }
 
     const selector = el("gameSelector");
+    const inactiveGroup = document.createElement("optgroup");
+    inactiveGroup.label = "Inactive";
     state.games.forEach((game) => {
       const opt = document.createElement("option");
       opt.value = game.id;
       opt.textContent = game.displayName;
       opt.selected = game.id === state.currentGame?.id;
-      selector.appendChild(opt);
+      (game.active ? selector : inactiveGroup).appendChild(opt);
     });
+    if (inactiveGroup.children.length) selector.appendChild(inactiveGroup);
 
     selector.onchange = (e) => {
       const gameId = Number(e.target.value);

@@ -11,9 +11,12 @@
   --border: #e2e8f0;
   --radius: 12px;
   --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-  --warning-bg: #fff7ed;
-  --warning-border: #f59e0b;
+  --warning-bg: #fef3c7;
+  --warning-icon: #f59e0b;
   --warning-text: #92400e;
+  --info-bg: #e0f2fe;
+  --info-icon: #0ea5e9;
+  --info-text: #075985;
   --success-bg: #b0ffce;
   --success-text: #0b3e1e;
   --buton-bg: #70bbff;
@@ -30,9 +33,12 @@
   --text-muted: #94a3b8;
   --border: #334155;
   --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.3), 0 2px 4px -2px rgb(0 0 0 / 0.3);
-  --warning-bg: #451a03;
-  --warning-border: #b45309;
-  --warning-text: #fed7aa;
+  --warning-bg: #422006;
+  --warning-icon: #fbbf24;
+  --warning-text: #fde68a;
+  --info-bg: #082f49;
+  --info-icon: #38bdf8;
+  --info-text: #bae6fd;
   --success-bg: #43ff8c;
   --success-text: #000000;
   --buton-bg: #2563eb;
@@ -363,7 +369,6 @@ main {
   padding: 0.75rem 1rem;
   border-radius: var(--radius);
   background-color: var(--warning-bg);
-  border: 1px solid var(--warning-border);
   color: var(--warning-text);
 }
 
@@ -377,7 +382,16 @@ main {
 }
 
 .warning-banner-content svg {
-  color: var(--warning-border);
+  color: var(--warning-icon);
+}
+
+.info-card {
+  background-color: var(--info-bg);
+  color: var(--info-text);
+}
+
+.info-card .warning-banner-content svg {
+  color: var(--info-icon);
 }
 
 .info-icon {

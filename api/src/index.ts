@@ -1,4 +1,4 @@
-import { getUuidByIgn, getUuidsByIgns, getTopGainers, getTopGainersForMonth, getTopGainerMonths, getTopGainersHistory, getPlayersHistory, getPlayerScores, getPlayerMonthScores, getLeaderboard, getGamePopulation, getServerPopulation, getServerStatus, getActiveHours, searchPlayers } from "./db";
+import { getUuidByIgn, getUuidsByIgns, getTopGainers, getTopGainersForMonth, getTopGainerMonths, getTopGainersHistory, getPlayersHistory, getPlayerScores, getPlayerMonthScores, getLeaderboard, getLastSnapshotTimes, getGamePopulation, getServerPopulation, getServerStatus, getActiveHours, searchPlayers } from "./db";
 import { fetchGames } from "./cubepanion";
 
 const PORT = process.env.PORT ? Number(process.env.PORT) : 4000;
@@ -142,8 +142,12 @@ function clamp(value: number, min: number, max: number) {
 }
 
 async function handleGames() {
-    const games = await fetchGames();
-    return jsonResponse(games);
+    const [games, lastSnapshots] = await Promise.all([fetchGames(), getLastSnapshotTimes()]);
+    return jsonResponse(
+        games
+            .filter((g) => lastSnapshots.has(g.id))
+            .map((g) => ({ ...g, lastSnapshot: lastSnapshots.get(g.id) })),
+    );
 }
 
 async function handleSearchPlayers(req: Request) {
